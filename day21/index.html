@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+svg{
+  background-color: #fff
+}
+body{
+  background-color: #141414
+
+}
+</style>
+
+<svg width="600" height="600"></svg>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+// fork from https://bl.ocks.org/tophtucker/26b8e7e35da08ec30d5a47dc8fe6aaba
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var colors = [ "#EE4266", "#2A1E5C", "#449DD1", "#EB8258"];
+
+
+var padding = 5, // separation between same-color circles
+    clusterPadding = 20, // separation between different-color circles
+    maxRadius = 10;
+    clusters = new Array(colors.length);
+
+var nodes = d3.range(300).map(() => {
+        var i = Math.floor(Math.random() * colors.length);
+        var radius = Math.sqrt((i + 1) / colors.length * -Math.log(Math.random())) * maxRadius;
+        var x = Math.random() * width;
+        var y = Math.random() * height;
+        var d = {cluster: i, r: radius, x: x, y: y};
+        if (!clusters[i] || (radius > clusters[i].r)) clusters[i] = d;
+        return d;
+    });
+
+var sites = [];
+
+for(var i=0; i<nodes.length; i++) {
+sites.push([nodes[i].x, nodes[i].y]);
+}
+
+var voronoi = d3.voronoi()
+    .extent([[-1, -1], [width + 1, height + 1]]);
+//
+var polygon = svg.append("defs")
+    .selectAll("clipPath")
+    .data(voronoi.polygons(sites))
+    .enter().append("clipPath")
+    .attr("id", function(d,i) { return "clip" + i; })
+    .append("path")
+    .attr("d", function(d) { return d ? "M" + d.join("L") + "Z" : null; })
+
+var circle = svg.append("g")
+  .selectAll("circle")
+  .data(nodes)
+  .enter().append("circle")
+    .attr("r", getMaxLinkDistance(voronoi.links(sites)))
+    .attr("cx", function(d) { return d.x; })
+    .attr("cy", function(d) { return d.y; });
+
+
+circle.attr("clip-path", function(d,i) { return "url(#clip" + i + ")"; })
+      .attr("fill", function(d) { return colors[d.cluster]})
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 0.5)
+      .transition()
+      .delay(500)
+      .duration(4000)
+      .attr("r", 5)
+//
+//
+
+
+setTimeout(function() {
+  circle.attr("clip-path", null)
+
+  var simulation = d3.forceSimulation()
+      // .velocityDecay(0.2)
+      // .force("x", d3.forceX().strength(0.0002))
+      // .force("y", d3.forceY().strength(0.0002))
+      .force("collide", collide)
+      .force("cluster", clustering)
+      .on("tick", ticked);
+}, 4600)
+
+function ticked() {
+
+    circle.transition().duration(60)
+          .attr("cx", function(d) { return d.x})
+          .attr("cy", function(d) { return d.y; })
+          .attr("r", 5)
+        }
+
+function getMaxLinkDistance(links) {
+  return d3.max(links.map(function(d) {
+    return Math.sqrt(
+      Math.pow(d.target[0] - d.source[0],2) +
+      Math.pow(d.target[1] - d.source[1],2)
+    );
+  }));
+}
+
+// These are implementations of the custom forces.
+function clustering(alpha) {
+    nodes.forEach(function(d) {
+      var cluster = clusters[d.cluster];
+      if (cluster === d) return;
+      var x = d.x - cluster.x,
+          y = d.y - cluster.y,
+          l = Math.sqrt(x * x + y * y),
+          r = d.r + cluster.r;
+      if (l !== r) {
+        l = (l - r) / l * alpha;
+        d.x -= x *= l;
+        d.y -= y *= l;
+        cluster.x += x;
+        cluster.y += y;
+      }
+    });
+}
+
+function collide(alpha) {
+  var quadtree = d3.quadtree()
+      .x((d) => d.x)
+      .y((d) => d.y)
+      .addAll(nodes);
+
+  nodes.forEach(function(d) {
+    var r = d.r + maxRadius + Math.max(padding, clusterPadding),
+        nx1 = d.x - r,
+        nx2 = d.x + r,
+        ny1 = d.y - r,
+        ny2 = d.y + r;
+    quadtree.visit(function(quad, x1, y1, x2, y2) {
+
+      if (quad.data && (quad.data !== d)) {
+        var x = d.x - quad.data.x,
+            y = d.y - quad.data.y,
+            l = Math.sqrt(x * x + y * y),
+            r = d.r + quad.data.r + (d.cluster === quad.data.cluster ? padding : clusterPadding);
+        if (l < r) {
+          l = (l - r) / l * alpha;
+          d.x -= x *= l;
+          d.y -= y *= l;
+          quad.data.x += x;
+          quad.data.y += y;
+        }
+      }
+      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+    });
+  });
+}
+
+</script>

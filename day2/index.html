@@ -1,0 +1,77 @@
+<!-- fork from https://bl.ocks.org/mbostock/31bd072e50eaf550d79e -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+  margin: auto;
+  position: relative;
+  width: 800px;
+}
+</style>
+<canvas width="800" height="800"></canvas>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+var canvas = d3.select("canvas"),
+    canvasNode = canvas.node(),
+    context = canvasNode.getContext("2d");
+
+var numSamplesPerFrame = 25,
+    numSamples = 0;
+
+var width = canvasNode.width,
+    height = canvasNode.height,
+    outerRadius = (Math.min(width, height)) / 3.5,
+    innerRadius = outerRadius / 4;
+
+context.translate(width / 2 , height / 2 );
+
+context.save();
+context.beginPath();
+context.arc(0, 0, outerRadius, Math.PI, 0);
+context.moveTo(innerRadius, 0);
+context.arc(0, 0, innerRadius, Math.PI, 0);
+context.fillStyle = "#FFFFFF";
+context.fill("evenodd");
+context.restore();
+
+context.save();
+context.beginPath();
+context.arc(0, 0, outerRadius, 0, Math.PI);
+context.moveTo(innerRadius, 0);
+context.arc(0, 0, innerRadius, 0, Math.PI);
+context.fillStyle = "#FFFFFF";
+context.fill("evenodd");
+context.restore();
+
+
+d3.timer(function() {
+  for (var i = 0; i < numSamplesPerFrame; ++i) {
+    var r = innerRadius + Math.random() * (outerRadius - innerRadius),
+        a = Math.random() * Math.PI,
+        x = r * Math.cos(a),
+        y = r * Math.sin(a);
+    context.beginPath();
+    context.fillStyle = "#D81E5B";
+    context.arc(x, y, .8, 0, 2 * Math.PI);
+    context.fill();
+  }
+  return ++numSamples > 750;
+});
+
+d3.timer(function() {
+  for (var i = 0; i < numSamplesPerFrame; ++i) {
+    var r = innerRadius + Math.random() * (outerRadius - innerRadius),
+        a = - Math.random() * Math.PI,
+        x = r * Math.cos(a),
+        y = r * Math.sin(a);
+    context.beginPath();
+    context.fillStyle = "#2AB7CA";
+    context.arc(x, y, .8, 0, 2 * Math.PI);
+    context.fill();
+  }
+  return ++numSamples > 150;
+});
+
+</script>

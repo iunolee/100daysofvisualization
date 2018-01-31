@@ -1,0 +1,79 @@
+<!-- fork from https://bl.ocks.org/mbostock/1021841 -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+  margin: auto;
+  position: relative;
+  width: 800px;
+}
+button {
+  position: absolute;
+  left:10px;
+  top: 20px;
+}
+</style>
+<body>
+<button onclick="scattered()">Scatter!</button>
+
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+var width = 800,
+    height = 800;
+
+var svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+var a = 0.01;
+
+var fill = ["#E07A5F", "#3D405B", "#81B29A", "#F2CC8F"];
+
+var nodes = d3.range(350).map(function(i) {return {index  : i};});
+
+var force = d3.layout.force()
+    .nodes(nodes)
+    .size([width, height])
+    .on("tick", tick)
+    .start();
+
+var node = svg.selectAll(".node")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("class", "node")
+    .attr("cx", function(d) { return d.x; })
+    .attr("cy", function(d) { return d.y; })
+    .attr("r", 6)
+    .style("fill", function(d, i) {return fill[i & 3]; })
+
+svg.style("opacity", 0)
+   .transition()
+   .duration(500)
+   .style("opacity", 1);
+
+function tick(e) {
+  // Push different nodes in different directions for clustering.
+  // console.log(e.alpha);
+  if(a < 5) {
+   a += 0.2;
+  } else {
+   a = 5;
+  }
+  var k = a * e.alpha;
+  nodes.forEach(function(o, i) {
+    o.y += i & 1 ? k : -k;
+    o.x += i & 2 ? k : -k;
+  });
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
+
+function scattered() {
+  nodes.forEach(function(o, i) {
+    o.x += (Math.random() - .5) * 500;
+    o.y += (Math.random() - .5) * 500;
+  });
+  force.resume();
+}
+</script>

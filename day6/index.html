@@ -1,0 +1,105 @@
+<!-- fork from https://bl.ocks.org/mbostock/cd98bf52e9067e26945edd95e8cf6ef9 -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 800px;
+}
+button {
+  position: relative;
+  left:10px;
+  top: 20px;
+}
+</style>
+<button onclick="stepOne()">Step #1</button>
+<button onclick="stepTwo()">Step #2</button>
+
+<svg width="800" height="800" viewBox="-400 -400 800 800">
+  <circle r="75" stroke="#462255" stroke-opacity="0" fill="none"></circle>
+  <circle r="200" stroke="#FFA69E" stroke-opacity="0" fill="none"></circle>
+  <circle r="300" stroke="#93E1D8" stroke-opacity="0" fill="none"></circle>
+</svg>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script>
+
+var nodes = [].concat(
+  d3.range(30).map(function() { return {type: "a"}; }),
+  d3.range(300).map(function() { return {type: "b"}; }),
+  d3.range(1500).map(function() { return {type: "c"}; })
+);
+
+shuffleArray(nodes);
+
+var node = d3.select("svg")
+  .append("g")
+  .selectAll("circle")
+  .data(nodes)
+  .enter().append("circle")
+  .attr("r", 2)
+  .attr("fill", function(d) {
+    if(d.type == "a") {
+      return "#462255";
+    } else if(d.type == "b") {
+      return "#FFA69E";
+    } else if(d.type == "c") {
+      return "#93E1D8";
+    }
+  })
+
+var initialPosition = d3.forceSimulation(nodes)
+      .force("charge", d3.forceCollide().radius(3))
+      .force("r", d3.forceRadial(function(d) { return 300;}))
+      .on("tick", ticked);
+
+function stepOne() {
+  setTimeout(function() {
+    var simulation = d3.forceSimulation(nodes)
+    .force("charge", d3.forceCollide().radius(3))
+    .force("r", d3.forceRadial(function(d) {
+      if(d.type == "a") {
+        return 150;
+      } else if(d.type == "b") {
+        return 150;
+      } else if(d.type == "c") {
+        return 300;
+      }
+    }))
+    .on("tick", ticked);
+  }, 500);
+}
+
+function stepTwo() {
+  setTimeout(function() {
+    var simulation = d3.forceSimulation(nodes)
+    .force("charge", d3.forceCollide().radius(3))
+    .force("r", d3.forceRadial(function(d) {
+      if(d.type == "a") {
+        return 0;
+      } else if(d.type == "b") {
+        return 150;
+      } else if(d.type == "c") {
+        return 300;
+      }
+    }))
+    .on("tick", ticked);
+  }, 500);
+}
+
+function ticked() {
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
+
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+    return array;
+}
+</script>

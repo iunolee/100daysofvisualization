@@ -1,0 +1,145 @@
+<!-- fork from https://bl.ocks.org/mbostock/31ce330646fa8bcb7289ff3b97aab3f5 -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 800px;
+}
+button {
+  position: relative;
+  left:10px;
+  top: 20px;
+}
+</style>
+<body>
+<button onclick="beginCluster()">Begin clustering!</button>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+var width = 800,
+    height = 800,
+    padding = 50, // separation between same-color circles
+    clusterPadding = 0, // separation between different-color circles
+    maxRadius = 15;
+
+var n = 500, // total number of circles
+    m = 12; // number of distinct clusters
+
+var color = d3.scale.category20b()
+    .domain(d3.range(m));
+
+// The largest node for each cluster.
+var clusters = new Array(m);
+
+var nodes = d3.range(n).map(function() {
+  var i = Math.floor(Math.random() * m),
+      r = maxRadius,
+      d = {cluster: i, radius: r};
+  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
+  return d;
+});
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var force = d3.layout.force()
+        .nodes(nodes)
+        .size([width, height])
+        .gravity(0.2)
+        .charge(0)
+        .on("tick", initialTick)
+        .start();
+
+var circle = svg.selectAll("circle")
+    .data(nodes)
+    .enter().append("circle")
+    .attr("r", function(d) { return d.radius; })
+    .style("fill-opacity", 0.5)
+    .style("fill", function(d) { return color(d.cluster+8); })
+
+
+function beginCluster() {
+
+  padding = 100;
+  clusterPadding = 10;
+
+  force
+      .on("tick", clusterTick)
+      .gravity(0.01)
+      .charge(-2.5)
+      .start();
+}
+
+
+function initialTick(e) {
+  circle
+      .each(collide(0.1))
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
+
+
+function clusterTick(e) {
+  circle
+      .style("fill-opacity", 0.2)
+      .each(cluster(2*e.alpha))
+      // .each(collide(0.002))
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
+
+
+
+// Move d to be adjacent to the cluster node.
+function cluster(alpha) {
+  return function(d) {
+    var cluster = clusters[d.cluster];
+    if (cluster === d) return;
+    var x = d.x - cluster.x,
+        y = d.y - cluster.y,
+        l = Math.sqrt(x * x + y * y),
+        r = d.radius + cluster.radius;
+    if (l != r) {
+      l = (l - r) / l * alpha;
+      d.x -= x *= l;
+      d.y -= y *= l;
+      cluster.x += x;
+      cluster.y += y;
+    }
+  };
+}
+
+// Resolves collisions between d and all other circles.
+function collide(alpha) {
+  var quadtree = d3.geom.quadtree(nodes);
+  return function(d) {
+    var r = d.radius + maxRadius + Math.max(padding, clusterPadding),
+        nx1 = d.x - r,
+        nx2 = d.x + r,
+        ny1 = d.y - r,
+        ny2 = d.y + r;
+    quadtree.visit(function(quad, x1, y1, x2, y2) {
+      if (quad.point && (quad.point !== d)) {
+        var x = d.x - quad.point.x,
+            y = d.y - quad.point.y,
+            l = Math.sqrt(x * x + y * y),
+            r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? padding : clusterPadding);
+        if (l < r) {
+          l = (l - r) / l * alpha;
+          d.x -= x *= l;
+          d.y -= y *= l;
+          quad.point.x += x;
+          quad.point.y += y;
+        }
+      }
+      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+    });
+  };
+}
+
+</script>
+</body>

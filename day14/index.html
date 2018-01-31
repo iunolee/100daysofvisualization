@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+margin: auto;
+position: relative;
+width: 800px;
+background : #141414;
+}
+</style>
+<!-- <input type="range" min="0" max="358" step="2"> -->
+<body>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+  var color = ["#1CCAD8", "#456990", "#F6D8AE", "#F45B69", "#7E6B8F"];
+
+  var radius = d3.scale.linear()
+    .domain([0, 12])
+    .range([20, 260]);
+
+  var fill = d3.scale.linear()
+    .domain([0, 0.5, 1])
+    .range([color[3], color[4], color[1]]);
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", 800)
+    .attr("height", 800)
+    .append("g")
+    .attr("transform", "translate(400,400)");
+
+  var angleData = d3.range(0, 360, 15);
+
+  var g = svg.selectAll("g")
+    .data(angleData)
+    .enter().append("g")
+    .attr("transform", function(d) {
+      return "rotate(" + d + ")";
+    });
+
+  var stepData = function(p) {
+    return d3.range(12).map(function(d) {
+      return {
+        x: p, // outer dimension (angle)
+        y: d, // inner dimension (radius)
+        z: Math.random()
+      };
+    });
+  }
+
+  var path = g.selectAll("path")
+    .data(stepData)
+    .enter().append("path")
+    .attr("d", d3.svg.arc()
+      .innerRadius(function(d) {
+        return radius(d.y);
+      })
+      .outerRadius(function(d) {
+        return radius(d.y + 0.5);
+      })
+      .startAngle(0)
+      .endAngle(Math.PI*0.08))
+    .attr("fill", function(d) {
+      console.log(d); return fill(d.z);
+    })
+    .attr("fill-opacity", 0);
+
+  path.transition()
+    .duration(function(d) {
+      return d.z * 2500;
+    })
+    .delay(function(d) {
+      return d.y * 800;
+    })
+    .ease("exp")
+    .attr("fill-opacity", 1);
+</script>
+</body>

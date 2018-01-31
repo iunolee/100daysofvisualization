@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    margin: auto;
+    position: relative;
+    width: 800px;
+    background : #141414;
+  }
+  div {
+    position: absolute;
+    width: 30px;
+    height: 5px;
+    border: 0px #fff;
+  }
+</style>
+
+<body>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script>
+    var width = 800,
+        height = 800;
+
+    var z = 40,
+        x = width / z,
+        y = height / z;
+
+    var color = ["#1CCAD8", "#456990", "#F6D8AE", "#F45B69", "#7E6B8F"];
+
+    d3.select("body").selectAll("div")
+      .data(d3.range(x * y))
+      .enter().append("div")
+      .style("transform", function(d) {
+        return "translate(" + (d % x) * z + "px, " + ((Math.floor(d / x) * z)+z/2) + "px) rotate(" + Math.random() * 180 + "deg) scale(0.5)";})
+      .style("background-color", function(d) {return color[Math.random()*color.length|0]})
+      .on("mouseover", mouseover);
+
+    function mouseover(d) {
+      var origin = this.style.transform.toString();
+      var originRotate = origin.split(' ')[2].replace("rotate(", '').slice(0, -1);
+
+      d3.select(this)
+        .style("pointer-events", "none")
+        .raise()
+        .transition()
+        .duration(750)
+        .style("transform", "translate(" + ((width / 2) - (z / 2)) + "px," + ((height / 2) - (z / 2)) + "px) scale(20) rotate(" + originRotate + ")")
+        .style("opacity", "0.5")
+        .transition()
+        .delay(250)
+        .style("transform", origin + "scale(1)")
+        .style("opacity", "1")
+        // .remove();
+    }
+  </script>

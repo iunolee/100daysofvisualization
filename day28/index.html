@@ -1,0 +1,146 @@
+<!-- fork from https://bl.ocks.org/mbostock/3888852 -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+margin: auto;
+position: relative;
+width: 800px;
+background : #141414;
+color: #fff;
+font-family: futura;
+font-size:0.8em;
+}
+svg {
+  padding: 20px 0px 0px 20px;
+}
+button {
+  position : absolute;
+  left:10px;
+  top:700px;
+  width:780px;
+  height:30px;
+  font-family: futura;
+  background-color: #4F345A;
+  color : #D9F0FF;
+  border : none;
+}
+</style>
+<body>
+<button>Change data</button>
+<script src="//d3js.org/d3.v3.min.js"></script>
+<script>
+
+var radius = 56,
+    padding = 10;
+
+var color = d3.scale.ordinal()
+    .range(["#D9F0FF", "#A3D5FF", "#83C9F4", "#6F73D2", "#7681B3", "#5D4E6D", "#4F345A"]);
+
+var arc = d3.svg.arc()
+    .outerRadius(radius)
+    .innerRadius(radius - 40);
+
+var pie = d3.layout.pie()
+    .value(function(d) { return d.population; })
+    .sort(null);
+
+var selectedData = []; // To demostrate trasition, choose certain number of sets from data
+var totalData = [];
+d3.csv("data.csv", function(error, data) {
+  if (error) throw error;
+
+  for(var i=0; i<30; i++) {
+  selectedData.push(data[i])
+  }
+
+  color.domain(d3.keys(data[0]).filter(function(key) { return key !== "State"; }));
+
+  selectedData.forEach(function(d) {
+    d.ages = color.domain().map(function(name) {
+      return {name: name, population: +d[name]};
+    });
+  });
+
+  // var legend = d3.select("body").append("svg")
+  //     .attr("class", "legend")
+  //     .attr("width", radius * 2)
+  //     .attr("height", radius * 2)
+  //     .selectAll("g")
+  //     .data(color.domain().slice().reverse())
+  //     .enter().append("g")
+  //     .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+  //
+  // legend.append("rect")
+  //     .attr("width", 18)
+  //     .attr("height", 18)
+  //     .style("fill", color);
+  //
+  // legend.append("text")
+  //     .attr("x", 24)
+  //     .attr("y", 9)
+  //     .attr("dy", ".35em")
+  //     .text(function(d) { return d; });
+
+  var svg = d3.select("body").selectAll(".pie")
+      .data(selectedData)
+      .enter().append("svg")
+      .attr("class", "pie")
+      .attr("width", radius * 2)
+      .attr("height", radius * 2)
+      .append("g")
+      .attr("transform", "translate(" + radius + "," + radius + ")");
+
+  var path = svg.selectAll(".arc")
+      .data(function(d) { return pie(d.ages); })
+      .enter().append("path")
+      .attr("class", "arc")
+      .attr("d", arc)
+      .style("fill", function(d) { return color(d.data.name); })
+      .each(function(d) { this._current = d; }); // store the initial angles
+
+  svg.append("text")
+      .attr("dy", ".35em")
+      .attr("fill", "#fff")
+      .style("text-anchor", "middle")
+      .text(function(d) { return d.State; });
+
+  d3.selectAll("button")
+      .on("click", change);
+
+  function change() {
+
+    selectedData=[];
+    for(var i=0; i<30; i++) {
+    selectedData.push(data[Math.floor(Math.random()*data.length)])
+    }
+
+    selectedData.forEach(function(d) {
+      d.ages = color.domain().map(function(name) {
+        return {name: name, population: +d[name]};
+      });
+    });
+
+      svg.data(selectedData);
+      pie.value(function(d) { return d.population; })
+      path.data(function(d) {return pie(d.ages);});
+      // path.attr("class", "arc")
+      path.transition().duration(1000).attrTween("d", arcTween);
+
+      svg.selectAll("text").remove();
+
+      svg.append("text")
+          .attr("dy", ".35em")
+          .attr("fill", "#fff")
+          .style("text-anchor", "middle")
+          .text(function(d) { return d.State; });
+  }
+});
+
+function arcTween(a) {
+  var i = d3.interpolate(this._current, a);
+  this._current = i(0);
+  return function(t) { return arc(i(t));};
+}
+</script>

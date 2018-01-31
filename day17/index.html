@@ -1,0 +1,127 @@
+<!-- fork from http://bl.ocks.org/nbremer/a3684c52fb527c8fa415 -->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <title>Gooey effect</title>
+  <script src="http://d3js.org/d3.v3.min.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+  <style>
+  body {
+  margin: auto;
+  position: relative;
+  width: 600px;
+  background : #fff;
+  }
+    svg {
+      margin-top : 15%;
+      border : 0.1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="chart"></div>
+  <script>
+    var margin = {
+        top: 30,
+        right: 30,
+        bottom: 30,
+        left: 30
+      },
+      // width = Math.min(600, $(".chart").width() - margin.left - margin.right),
+      width = 600,
+      rectWidth = width,
+      rectHeight = 100;
+
+    var w = window,
+      d = document,
+      e = d.documentElement,
+      g = d.getElementsByTagName('body')[0],
+      // height = 600;(w.innerHeight || e.clientHeight || g.clientHeight) - margin.top - margin.bottom - 30;
+      height = 600;
+    var color = ["#F49D6E", "#F5D6BA", "#ACC3A6"];
+
+    var data = [];
+    var dataNum = 200;
+    for (var i = 0; i < dataNum; i++) {
+      data.push({
+        xLoc: Math.random() * width * 1.2,
+        seed: i
+      })
+    }
+
+    //Create scale
+    var scale = d3.scale.linear()
+      .domain([-1, 1])
+      .range([Math.min(height / 2, 500), -1 * Math.min(height / 2, 500)]);
+
+    //Create SVG
+    var svg = d3.select(".chart").append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .style("filter", "url(#gooey)") //Set the filter on the container svg
+      .attr("transform", "translate(" + (-2*margin.left) + "," + 0 + ")");
+
+    //SVG filter for the gooey effect
+    //Code taken from http://tympanus.net/codrops/2015/03/10/creative-gooey-effects/
+    var defs = svg.append("defs");
+    var filter = defs.append("filter").attr("id", "gooey");
+    filter.append("feGaussianBlur")
+      .attr("in", "SourceGraphic")
+      .attr("stdDeviation", "10")
+      //to fix safari: http://stackoverflow.com/questions/24295043/svg-gaussian-blur-in-safari-unexpectedly-lightens-image
+      .attr("color-interpolation-filters", "sRGB")
+      .attr("result", "blur");
+    filter.append("feColorMatrix")
+      .attr("in", "blur")
+      .attr("mode", "matrix")
+      .attr("values", "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9")
+      .attr("result", "gooey");
+
+    //Create a circle that will move out of the center circle
+    svg.selectAll(".flyCircle")
+      .data(data).enter()
+      .append("circle")
+      .attr("class", "flyCircle")
+      .attr("cx", function(d, i) {
+        return d.xLoc;
+      })
+      .attr("cy", height / 2)
+      .attr("r", 13)
+      .style("fill", function(d) {
+        return color[Math.random() * color.length | 0]
+      })
+      .transition().duration(3000).delay(function(d, i) {
+        return i * 75;
+      })
+      .attr("cy", function(d) {
+        return random(d.seed++);
+      })
+      .each(update);
+
+    //Continuously keep the circle flying out
+    function update() {
+      var circle = d3.select(this);
+      (function repeat() {
+        circle = circle
+          // .transition().duration(1000)
+          // .attr("cy", height/2 )
+          .transition().duration(3000)
+          .attr("cy", function(d) {
+            return height / 2 + random(d.seed++);
+          })
+          .each("end", repeat);
+      })();
+    } //update
+
+    //Random number generator depending on input
+    function random(d) {
+      var x = Math.sin(d) * 10000;
+      var rand = x - Math.floor(x);
+      return (Math.floor(Math.random() * 2) == 1 ? 1 : -1) * (scale(rand));
+    }
+  </script>
+</body>
+</html>

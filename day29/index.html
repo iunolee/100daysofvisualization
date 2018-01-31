@@ -1,0 +1,202 @@
+<!-- fork from https://bl.ocks.org/cmgiven/abca90f6ba5f0a14c54d1eb952f8949c -->
+
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+div { float: left; }
+#choropleth {background: #fff}
+#scatterplot {background: #fff}
+.tooltip {
+  position: absolute;
+  padding: 7px;
+  font-size: 0.75em;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 0px;
+  font-family: futura;
+  /* -moz-box-shadow:    3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+  -webkit-box-shadow: 3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+  box-shadow:         3px 3px 10px 0px rgba(0, 0, 0, 0.25); */
+}
+.tooltip p {
+  margin: 0;
+  padding: 0;
+}
+</style>
+<body>
+<div id="choropleth"></div>
+<div id="scatterplot"></div>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/topojson.v2.min.js"></script>
+<script>
+d3.queue()
+    .defer(d3.csv, 'output.csv', function (d) {
+        return {
+            name: d.county,
+            rate: +d.rate,
+        }
+    })
+
+    .defer(d3.json, "https://d3js.org/us-10m.v1.json")
+    .awaitAll(initialize)
+
+// var color = d3.scaleOrdinal(d3.schemeAccent)
+// .domain([0, 25])
+// .range(['#fbb4b9', '#7a0177'])
+
+var tooltip = d3.select("body").append("div")
+	.attr("class", "tooltip")
+	.style("opacity", 0);
+
+
+var color = d3.scaleLinear()
+        .domain([0, 10, 23])
+        .range(['#F2ED6F', '#66A182', '#214772'])
+        .interpolate(d3.interpolateHcl); //interpolateHsl interpolateHcl interpolateRgb
+
+
+function initialize(error, results) {
+    if (error) { throw error }
+
+    var data = results[0]
+    var features = results[1];
+
+    var components = [
+        scatterplot(onBrush),
+        choropleth(features)
+    ]
+
+    function update() {
+        components.forEach(function (component) { component(data) })
+    }
+
+
+    function onBrush(x0, x1) {
+        var clear = x0 === x1;
+        data.forEach(function (d) {
+            d.filtered = clear ? false : d.rate < x0 || d.rate > x1
+        })
+        update()
+    }
+    update()
+}
+
+function scatterplot(onBrush) {
+    var margin = { top:0, right: 20, bottom: 0, left: 20 }
+    var width = 1000 - margin.left - margin.right
+    var height = 80 - margin.top - margin.bottom
+
+    var x = d3.scaleLinear()
+        .range([0, width])
+
+    var xAxis = d3.axisBottom()
+        .scale(x)
+        .tickFormat(d3.format(''))
+
+    var brush = d3.brushX()
+        .extent([[0, 0], [width, height]])
+        .on('start brush', function () {
+            var selection = d3.event.selection
+            var x0 = x.invert(selection[0])
+            var x1 = x.invert(selection[1])
+            onBrush(x0, x1)
+        })
+
+    var svg = d3.select('#scatterplot')
+        .append('svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom)
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+
+    var bg = svg.append('g')
+
+    var gx = svg.append('g')
+        .attr('class', 'x axis')
+        .attr('transform', 'translate(0,' + height/2 + ')')
+
+    gx.append('text')
+        .attr('x', width)
+        .attr('y', 35)
+        .style('text-anchor', 'end')
+        .style('fill', '#141414')
+        .style('font-weight', 'bold')
+        .text('Unemployment rate(%)')
+
+    svg.append('g')
+        .attr('class', 'brush')
+        .call(brush)
+
+    return function update(data) {
+        x.domain(d3.extent(data, function (d) { return d.rate })).nice()
+        gx.call(xAxis)
+
+        var circle = svg.selectAll('circle')
+            .data(data, function (d) { return d.name })
+
+        circle.exit().remove()
+
+        circle.enter().append('circle')
+            .attr('r', 5)
+            .style('stroke', '#fff')
+            .merge(circle)
+            .attr('cx', function (d) { return x(d.rate) })
+            .attr('cy', function (d) { return height/2 })
+            .style('fill', function (d) { return color(d.rate) })
+            .style('opacity', function (d) { return d.filtered ? 0.1 : 0.9 })
+            // .style('stroke-width', function (d) { return d.filtered ? 0.2 : 1 })
+    }
+}
+
+var path = d3.geoPath();
+
+function choropleth(features) {
+    var width = 1000;
+    var height = 700;
+
+    var svg = d3.select('#choropleth')
+        .append('svg')
+        .attr('width', width)
+        .attr('height', height)
+
+    svg.selectAll('path')
+        .data(topojson.feature(features, features.objects.counties).features)
+        .enter()
+        .append('path')
+        .attr("class", "county")
+        .attr('d', path)
+        .style('stroke', '#fff')
+        .style('stroke-width', 1)
+        .style('fill', function (d) { return '#F2EF98'})
+
+
+
+    return function update(data) {
+        svg.selectAll('path')
+            .data(data)
+            .style('fill', function (d) { return d.filtered ? '#F2EF98' : color(d.rate) })
+
+        svg.selectAll(".county")
+              .on("mouseover", function(d) {
+                if(d.name !== undefined) {
+              			tooltip.transition()
+              			.duration(250)
+              			.style("opacity", 1);
+              			tooltip.html("<p><strong>" + d.name  + "</strong></p>" + "<p>" + d.rate + "%</p>")
+              			.style("left", (d3.event.pageX + 15) + "px")
+              			.style("top", (d3.event.pageY - 28) + "px");
+                }
+              })
+              .on("mouseout", function(d) {
+                if(d.name !== undefined) {
+              			tooltip.transition()
+              			.duration(250)
+              			.style("opacity", 0);
+                  }
+              	});
+    }
+}
+</script>
+</body>

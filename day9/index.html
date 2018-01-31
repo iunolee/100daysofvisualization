@@ -1,0 +1,146 @@
+<!-- fork from https://bl.ocks.org/mbostock/0adcc447925ffae87975a3a81628a196 -->
+
+<!DOCTYPE html>
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 800px;
+  background : #141414;
+}
+</style>
+<svg width="800" height="800"></svg>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height"),
+    color = d3.scaleOrdinal(d3.schemeCategory20);
+
+var n = 40;
+var nodes = [];
+var links = [];
+
+for (i = 0; i < n; i++) {
+      var char = i
+      char = {id: char};
+      nodes.push(char);
+}
+
+var simulation = d3.forceSimulation(nodes)
+    .force("charge", d3.forceManyBody().strength(-200))
+    .force("link", d3.forceLink(links).distance(20))
+    .force("x", d3.forceX())
+    .force("y", d3.forceY())
+    .alphaTarget(1)
+    .on("tick", ticked);
+
+var g = svg.append("g").attr("transform", "translate(" + width / 2 + "," + height / 2 + ")"),
+    link = g.append("g").attr("stroke", "#000").attr("stroke-width", 0.5).selectAll(".link"),
+    node = g.append("g").attr("stroke", "#fff").attr("stroke-width", 0.5).selectAll(".node");
+
+restart();
+
+d3.timeout(function() {
+  for(var i = 0; i < n-10; i++) {
+  links.push({source: nodes[i], target: nodes[i+1]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+2]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+3]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+4]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+5]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+6]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+7]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+8]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+9]}); // Add a-b.
+  links.push({source: nodes[i], target: nodes[i+10]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+2]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+3]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+4]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+5]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+6]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+7]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+8]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+9]}); // Add a-b.
+  links.push({source: nodes[i+1], target: nodes[i+10]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+3]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+4]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+5]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+6]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+7]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+8]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+9]}); // Add a-b.
+  links.push({source: nodes[i+2], target: nodes[i+10]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+4]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+5]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+6]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+7]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+8]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+9]}); // Add a-b.
+  links.push({source: nodes[i+3], target: nodes[i+10]}); // Add a-b.
+
+  }
+  restart();
+}, 100);
+
+  d3.interval(function() {
+    for(var i = 0; i<8; i++) {
+    links.pop();
+  }
+    restart();
+  }, 50);
+
+function restart() {
+
+  // Apply the general update pattern to the nodes.
+  node = node.data(nodes, function(d) { return d.id;});
+
+console.log(node);
+
+  node.exit().transition()
+      .attr("r", 5)
+      .attr("opacity", 0.5)
+      .remove();
+
+  node = node.enter().append("circle")
+      .attr("fill", function(d) { return "white"; })
+      .attr("opacity", 1)
+      .attr("stroke", "none")
+      .call(function(node) { node.transition().attr("r", 1.5);})
+      .merge(node);
+
+  // Apply the general update pattern to the links.
+  link = link.data(links, function(d) { return d.source.id + "-" + d.target.id; });
+
+  // Keep the exiting links connected to the moving remaining nodes.
+  link.exit().transition().delay(50)
+      .attr("stroke-opacity", 0.5)
+      .attrTween("x1", function(d) { return function() { return d.source.x; }; })
+      .attrTween("x2", function(d) { return function() { return d.target.x; }; })
+      .attrTween("y1", function(d) { return function() { return d.source.y; }; })
+      .attrTween("y2", function(d) { return function() { return d.target.y; }; })
+      .remove();
+
+  link = link.enter().append("line")
+      .attr("stroke", function(d) { return "white"; })
+      .call(function(link) { link.transition()
+      .attr("stroke-opacity", 1); })
+      .merge(link);
+
+  // Update and restart the simulation.
+  simulation.nodes(nodes);
+  simulation.force("link").links(links);
+  simulation.alpha(1).restart();
+}
+
+function ticked() {
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; })
+
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+}
+
+</script>

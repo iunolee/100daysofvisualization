@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scrolling Test</title>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+
+  <div id='graphic'>
+    <div id='sections'>
+      <section class="step">
+        <div class="title">1</div>
+        Show all of data. One data as one dot. Scroll down to see more.
+      </section>
+      <section class="step">
+        <div class="title">2</div>
+        Filter certain data and highlight them with certain color.
+        </section>
+        <section class="step">
+          <div class="title">3</div>
+        Make them line up to compare the amount of each filtered data.
+        </section>
+    </div>
+    <div id='vis'>
+    </div>
+  </div>
+<script src="scroller.js"></script>
+<script src="sections.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+  body {
+  margin: auto;
+  position: relative;
+  width: 600px;
+  background : #141414;
+  }
+  canvas{
+    margin-top : 15%;
+    border : 1px solid #4f4f4f;
+  }
+  </style>
+</head>
+
+<body>
+  <canvas></canvas>
+  <script>
+    var width = 600;
+    var height = 600;
+
+    var num = 8000;
+    var frames = num / 10;
+    var opacity = 0.01  ;
+    var linewidth = 1.2 ;
+    var lineNum = 100;
+
+
+    var canvas = d3.select("canvas").node()
+    canvas.width = width;
+    canvas.height = height;
+    ctx = canvas.getContext("2d")
+
+    ctx.globalCompositeOperation = "hard-light"
+
+    var colors = ["#EDF060", "#313C7F", "#71C1F2","#F0544F"];
+    var colorArray = colors.map(function(c) {
+      var rgb = d3.rgb(c)
+      return [rgb.r, rgb.g, rgb.b]
+    })
+
+    var data = d3.range(num).map(function(i) {
+      return {
+        x1: -10,
+        x2: Math.random() * (width + 20),
+        // y1: height/2 + (i / num) + Math.random() * (100),
+        // y2: (300 - i / num * 300) + Math.random() * 100,
+        y1: height+10,
+        y2: Math.random() * (height + 20),
+        color: colorArray[Math.floor(i/num * 4 + Math.random() * 2)]
+      }
+    })
+
+    ctx.fillStyle = '#141414'
+    ctx.fillRect(0, 0, width, height)
+
+    ctx.lineWidth = linewidth;
+
+    var frame = 0;
+    var now = +new Date();
+    d3.timer(function(elapsed) {
+      var diff = +new Date() - now;
+      if (frame >= frames - 1) {
+        if (diff < 2500) return;
+        frame = 0;
+        ctx.clearRect(0, 0, width, height)
+        ctx.fillStyle = '#141414'
+        ctx.fillRect(0, 0, width, height)
+
+      } else {
+        frame += 1
+        now = +new Date()
+      }
+
+      var drawings = data.slice(frame*8, frame*8 + lineNum)
+
+      var d;
+      for (var k = 0; k < lineNum; k++) {
+        d = drawings[k];
+        ctx.strokeStyle = "rgba(" + d.color + "," + opacity + ")"
+        ctx.beginPath();
+        ctx.moveTo(d.x1, d.y1);
+        ctx.lineTo(d.x2, d.y2);
+        ctx.stroke();
+      }
+    })
+  </script>
+</body>

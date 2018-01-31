@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<svg width="600" height="600"></svg>
+<style>
+svg {
+  background: #C497C6;
+}
+</style>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
+<script>
+
+//fork from https://bl.ocks.org/mbostock/7833311
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var delta = 0.001,
+    i = 0,
+    j,
+    n = 10000, // Total number of random points.
+    k = 120; // Number of points to replace per frame.
+    radius = 300; //How dispersed. Will decrease gradully
+
+var rx = d3.randomNormal(width / 2, radius),
+    ry = d3.randomNormal(height / 2, radius),
+    points = d3.range(n).map(function() { return [rx(), ry()]; });
+
+var hexbin = d3.hexbin()
+    .radius(10)
+    .extent([[0, 0], [width, height]]);
+
+var maxNum = d3.max(hexbin(points), function(d) { return d.length; });
+
+var color = d3.scaleSequential(d3.interpolateLab("#C497C6", "#4B46A0"))
+            .domain([0, maxNum]);
+
+var hexagon = svg.selectAll("path")
+                .data(hexbin(points))
+                .enter().append("path")
+                .attr("fill-opacity", 0)
+                .attr("d", hexbin.hexagon(10))
+                .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                .attr("fill", function(d) { return color(d.length); });
+
+hexagon.transition().duration(3000)
+       .attr("fill-opacity", 1)
+
+
+d3.timeout(function () {
+  d3.interval(updateData, 50);
+}, 3000);
+
+
+function updateData()  {
+// d3.timer(function(elapsed) {
+    // rx = d3.randomNormal(width / 2 + 80 * Math.cos(20 * delta), 80),
+    // ry = d3.randomNormal(height / 2 + 80 * Math.sin(20 * delta), 80);
+    rx = d3.randomNormal(width / 2, radius),
+    ry = d3.randomNormal(height / 2, radius);
+
+    for (j = 0; j < k; ++j, i = (i + 1) % n) {
+      points[i][0] = rx();
+      points[i][1] = ry();
+    }
+
+    hexagon = hexagon.data(hexbin(points), function(d) { return d.x + "," + d.y; });
+
+    maxNum = d3.max(hexbin(points), function(d) { return d.length; });
+    color.domain([0, maxNum]);
+    // console.log(maxNum)
+
+    hexagon
+    .exit()
+    .remove();
+
+
+    hexagon = hexagon.enter().append("path")
+                     .attr("d", hexbin.hexagon(10))
+                     .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+                     .merge(hexagon)
+                     .attr("fill-opacity", 1)
+                     .attr("fill", function(d) { return color(d.length); });
+
+   if(radius > 60) radius -= 2; else radius = 60;
+   // console.log(radius);
+
+  // });
+}
+</script>

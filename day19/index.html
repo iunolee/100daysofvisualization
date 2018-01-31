@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+  <title>Voronoi Tesselation</title>
+  <script src="//d3js.org/d3.v3.min.js"></script>
+  <script type="text/javascript" src="https://cdn.rawgit.com/mbostock/d3/841f35456831192fd008222c8ae15b6738acace9/lib/jit/voronoi.min.js"></script>
+  <style type="text/css">
+    svg {
+      display: block;
+      /* border: solid 1px #666; */
+    }
+
+    path {
+      /* fill: yellow; */
+      stroke: #fff;
+      stroke-width: 0px;
+    }
+    /* circle {
+      fill: #ccc;
+      stroke: #000;
+      pointer-events: none;
+    } */
+  </style>
+</head>
+
+<body>
+  <script type="text/javascript">
+    var w = 600,
+      h = 600;
+
+
+    var vertices = [];
+
+    console.log(vertices);
+
+    var svg = d3.select("body")
+      .append("svg")
+      .attr("width", w)
+      .attr("height", h)
+      .on("mousedown", update);
+    //
+    setInterval(function() {
+      update()
+    },1500);
+
+    // update()
+
+    // svg.selectAll("circle")
+    //   .data(vertices.slice(1))
+    //   .enter("svg:circle")
+    //   .attr("transform", function(d) {
+    //     console.log(d);
+    //     return "translate(" + d + ")";
+    //   })
+    //   .attr("r", 2);
+
+    function update() {
+      // vertices[0] = d3.svg.mouse(this);
+
+      randomData(4, 10);
+      console.log(vertices);
+
+
+      var voronoiShape = svg.selectAll(".voronoi")
+        .data(voronoi(vertices));
+
+      voronoiShape.exit()
+        // .transition().duration(500)
+        // .style("fill-opacity", 0)
+        .remove();
+
+      voronoiShape.enter().append("path")
+        .attr("class", "voronoi")
+        .style("fill", function() {
+          return d3.hsl(Math.random() * 360, 0.7, 0.7);
+        })
+        // .transition().delay(500).duration(1000)
+        // .attr("d", function(d) {
+        //   return "M" + d.join("L") + "Z";
+        // })
+        // .style("fill", function() {
+        //   return d3.hsl(Math.random() * 360, 0.7, 0.7);
+        // });
+
+
+      voronoiShape
+        .transition().duration(1000)
+        .attr("d", function(d) {
+          return "M" + d.join("L") + "Z";
+        })
+
+
+    }
+
+    function randomData(min, max) {
+
+      vertices = [];
+      var voronoiNum = Math.floor(Math.random() * (max - min + 1)) + min;
+
+      for (var i = 0; i < voronoiNum; i++) {
+        vertices.push([Math.random() * w, Math.random() * h])
+      }
+    }
+  </script>
+</body>
+
+</html>

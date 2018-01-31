@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+html, body {
+  /* background: #09233A; */
+}
+svg, canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #09233A;
+}
+canvas {
+  display: none;
+  /* background: #0F365B; */
+}
+</style>
+<body>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://d3js.org/d3.hexbin.v0.min.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+
+var hexbin = d3.hexbin()
+    .size([width, height])
+    .radius(4);
+
+
+
+var color = d3.scale.linear()
+   .domain([14, 80, 255])
+   .range(["#A7C984", "#3B5249", "#34252F"])
+   // .interpolate(d3.interpolate);
+
+var canvas = d3.select("body").append("canvas")
+    .attr("width", width)
+    .attr("height", height);
+
+var context = canvas.node().getContext("2d");
+var points = [];
+var hexagons = [];
+
+getImage("readme.png", function(image) {
+  context.drawImage(image, 0, 0, width, height);
+  image = context.getImageData(0, 0, width, height);
+
+  // Rescale the colors.
+  for (var c, i = 0, n = width * height * 4, d = image.data; i < n; i += 4) {
+    points.push([i/4 % width, Math.floor(i/4/width), d[i]]);
+
+  }
+
+
+
+  hexagons = hexbin(points);
+  // console.log(image.data);
+  // console.log(points[961]);
+  console.log(hexagons);
+
+
+
+  hexagons.forEach(function(d) {
+    d.min = d3.min(d, function(p) { return p[2]; });
+    d.max = d3.max(d, function(p) { return p[2]; });
+    d.mean = d3.mean(d, function(p) { return p[2]; });
+  });
+
+  var svg = d3.select("body").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+
+  var hexagon = svg.append("g")
+      .attr("class", "hexagons")
+      .selectAll("path")
+      // .data(hexagons)
+      .data(hexagons.filter(function(d) {  return !(d.max < 16  && d.min > 12 );}))
+      .enter().append("path")
+      .attr("d", hexbin.hexagon(4))
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
+      // .style("fill", function(d) { return color(d.min); })
+      .style("fill", function(d) { return "#09233A" })
+      .style("stroke", function(d) { return "#fff" })
+      .style("stroke-width", 0.5)
+      .style("stroke-opacity", 0.2);
+
+
+
+
+  var flip = true;
+
+  function toggle() {
+    hexagon
+      .transition()
+      .duration(4000)
+      // .style("fill", function(d) { return "#222" })
+      // .styleTween("fill", function(d) { return "#fff" })
+      .style("fill", function(d) { return color(flip ? d.min : d.max); })
+      // .styleTween("fill", function(d,i) {
+      //   var interpolate = d3.interpolate(flip ? d.min : d.max, flip ? d.max : d.min);
+      //   return function(t) {
+      //     return color(interpolate(t));
+      //   };
+      // });
+
+      flip = !flip;
+  };
+
+setInterval(toggle, 4000);
+
+  // loop(toggle, 4000);
+
+//   function loop(f,t) {
+//     f();
+//     setTimeout(function() {
+//       loop(f,t);
+//     },t)
+//   };
+});
+
+
+function getImage(path, callback) {
+  var image = new Image;
+  image.onload = function() { callback(image); };
+  image.src = path;
+}
+
+</script>

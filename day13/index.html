@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<body>
+  <style>
+  body {
+  margin: auto;
+  position: relative;
+  width: 800px;
+  background : #141414;
+  }
+  path {
+      fill: none;
+      stroke: #444;
+      opacity: 0.7;
+  }
+  </style>
+  <script src="//d3js.org/d3.v3.min.js"></script>
+  <script>
+
+
+    var width = 800,
+      height = 800,
+      margin = 10;
+
+    var points = d3.range(100).map(function(d) {
+      var xScale = d3.scale.linear().domain([0, width]).range([width/4, width-margin]);
+      var yScale = d3.scale.linear().domain([0, height]).range([margin*20, margin*25]);
+      var centerPointX = xScale(Math.random()*width);
+      var centerPointY = yScale(Math.random()*height);
+
+      return [
+        [0 + margin, height - margin*35],
+        [centerPointX * 0.6 , centerPointY],
+        [centerPointX, height - margin*35]
+      ];
+    });
+
+    var color = ["#EA796B", "#DCC5A8"];
+
+    var line = d3.svg.line()
+      .tension(0.2) // Catmull–Rom
+      .interpolate("cardinal");
+
+    var svg = d3.select("body").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+    var dashLines = svg.selectAll("line")
+      .data(points)
+      .enter()
+      .append("path")
+      .attr("d", line)
+      .attr("class", "line")
+      .style("stroke-dasharray", "3,3")
+      .style("stroke-width", 0.5)
+
+    var lines = svg.selectAll("line")
+      .data(points)
+      .enter()
+      .append("path")
+      .attr("d", line)
+      .attr("class", "line")
+      .style("stroke", function(d) {return color[Math.random()*color.length | 0]})
+      .style("stroke-width", 1.5)
+      .call(transition);
+
+    function transition(path) {
+      path.transition()
+        .duration(5000)
+        .ease("exp")
+        .attrTween("stroke-dasharray", tweenDash);
+    }
+
+    function tweenDash() {
+      var l = this.getTotalLength(),
+      i = d3.interpolateString("0," + l, l + "," + l);
+      return function(t) { return i(t); };
+    }
+  </script>

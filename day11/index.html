@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<canvas width="600" height="600"></canvas>
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 600px;
+  background : #141414;
+}
+canvas{
+  margin-top : 15%;
+  border : 0.2px solid #4f4f4f;
+}
+button {
+  position: absolute;
+  top : 8%;
+}
+</style>
+<button onclick="lookOthers()">Go!</button>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script>
+  var canvas = d3.select("canvas"),
+    context = canvas.node().getContext("2d"),
+    width = canvas.property("width"),
+    height = canvas.property("height")
+
+  var color = ["#1CCAD8", "#456990", "#F6D8AE", "#F45B69", "#7E6B8F"];
+
+  var x = d3.scaleLinear()
+    .domain([0, 50])
+    .range([0, width]);
+
+  var y = d3.scaleLinear()
+    .domain([0, 50])
+    .range([0, height]);
+
+  var points = d3.range(100).map(function(d) {
+    return {
+      x: x(d),
+      y: y(d),
+      radius: 5,
+      color: color[Math.random() * color.length | 0],
+      arcStart: 0,
+      arcEnd: Math.PI * (Math.random() * 2)
+    };
+  });
+
+  console.log(points);
+
+  var point = points[Math.random()*points.length | 0];
+
+  var zoom = d3.zoom()
+    .on("zoom", zoomed);
+
+  canvas.call(zoom.transform, transform);
+
+  function lookOthers() {
+    canvas.call(transition);
+  }
+
+  function zoomed() {
+
+    context.save();
+    context.clearRect(0, 0, width, height);
+    context.translate(d3.event.transform.x, d3.event.transform.y);
+    context.scale(d3.event.transform.k, d3.event.transform.k);
+    points.forEach(drawPoint);
+    drawPoint(point);
+    context.restore();
+  }
+
+  function drawPoint(point) {
+    context.beginPath();
+    context.moveTo(point.x + point.radius, point.y);
+    context.strokeStyle = point.color;
+    context.arc(point.x, point.y, point.radius, point.arcStart, point.arcEnd)
+    context.lineWidth = 3;
+    context.stroke();
+  }
+
+  function transform() {
+    return d3.zoomIdentity
+      .translate(width/2, height / 2)
+      .scale(15.5)
+      .translate(-point.x, -point.y);
+  }
+
+  function transition(canvas) {
+    var n = points.length,
+      i = Math.random() * n | 0,
+      c = points[i]; // Pick a random point.
+
+    console.log(points[i]);
+    console.log(points[n - 1]);
+
+    points[i] = points[n - 1];
+    points[n - 1] = point;
+    point = c;
+
+    canvas.transition()
+      .delay(250)
+      .duration(2500)
+      .call(zoom.transform, transform)
+      // .on("end", function() {
+      //   canvas.call(transition);
+      // });
+  }
+</script>
