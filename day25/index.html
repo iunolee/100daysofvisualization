@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style>
-html, body {
-  /* background: #09233A; */
+body{
+  margin: auto;
+  position: relative;
+  width: 1280px;
+  background : #09233A;
 }
 svg, canvas {
+  margin-top: 5%;
   position: absolute;
   top: 0;
   left: 0;
@@ -12,7 +16,6 @@ svg, canvas {
 }
 canvas {
   display: none;
-  /* background: #0F365B; */
 }
 </style>
 <body>
@@ -20,8 +23,8 @@ canvas {
 <script src="http://d3js.org/d3.hexbin.v0.min.js"></script>
 <script>
 
-var width = 960,
-    height = 500;
+var width = 1280,
+    height = 666;
 
 var hexbin = d3.hexbin()
     .size([width, height])

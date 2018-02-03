@@ -1,0 +1,218 @@
+<!-- data from https://www.theramenrater.com/resources-2/the-list/ -->
+
+<!DOCTYPE html>
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 1000px;
+  background : #fff;
+}
+.tooltip {
+  color:#A05441;
+  text-align: center;
+  position: absolute;
+  padding: 5px;
+  font-size: 0.75em;
+  pointer-events: none;
+  background: #fff;
+  border: 1px solid #A05441;
+  border-radius: 0px;
+  font-family: futura;
+  /* -moz-box-shadow:    3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+  -webkit-box-shadow: 3px 3px 10px 0px rgba(0, 0, 0, 0.25);
+  box-shadow:         3px 3px 10px 0px rgba(0, 0, 0, 0.25); */
+}
+.tooltip p {
+  margin: 0;
+  padding: 0;
+}
+
+.countryAvgText {
+  font-family: futura;
+  font-weight: bold;
+}
+canvas {
+  /* top : 100px; */
+}
+</style>
+<svg width="1000" height="1000"></svg>
+<script src="https://d3js.org/d3.v4.js"></script>
+
+<script>
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+var innerCircleRadius = 350;
+
+var radius = d3.scaleLinear().domain([0, 5]).range([0, 20]);
+var colorCountry = d3.scaleLinear().domain([2, 4.5]).range(["#f0d9c2", "#A05441"])
+
+var centerPosition = svg.append("g")
+                      .attr("transform", "translate(" + width/2 + "," + height/2 + ")");
+
+var tooltip = d3.select("body").append("div")
+    	.attr("class", "tooltip")
+    	.style("opacity", 0);
+
+  d3.queue()
+    .defer(d3.csv, 'ramen.csv')
+    .await(init);
+
+  function init(error, ramen) {
+
+    var countryAvgData = d3.nest()
+      .key(function(d) { return d.Country;})
+      .rollup(function(v) {
+        return {
+          count: v.length,
+          avg: d3.mean(v, function(d) { return (+d.Stars); })
+        };
+      })
+      .entries(ramen);
+
+    var ramenByCountry = d3.nest()
+        .key(function(d) { return d.Country;})
+        .entries(ramen);
+
+    var ramenByType = d3.nest()
+      .key(function(d) { return d.Style; })
+      .rollup(function(v) {
+        return {
+          count: v.length,
+          avg: d3.mean(v, function(d) { return (+d.Stars);})
+        };
+      })
+      .entries(ramen);
+
+     var countryAvg = centerPosition.selectAll(".countryAvg")
+      .data(countryAvgData);
+
+      countryAvg.enter().append("circle")
+      .attr("class", "countryAvg")
+      .attr("transform", function(d,i,a) {
+        return  "rotate(" + i*360/a.length + ") translate(" + (- innerCircleRadius - 40) + ")" })
+      .attr("cx", 0)
+      .attr("cy", 0)
+      .attr("r", function(d) {return radius(d.value.avg)*1.75})
+	    .attr("fill", function(d) {return colorCountry(d.value.avg)})
+      // .on("mouseover", function(d) {
+      //   tooltip.transition()
+      //   .duration(250)
+      //   .style("opacity", 1);
+      //   tooltip.html("<p><strong>" + d.key + " | " + d.value.avg.toFixed(2) + "</p>")
+      //   .style("left", (d3.event.pageX - 20) + "px")
+      //   .style("top", (d3.event.pageY - 40) + "px")
+      // })
+      // .on("mouseout", function(d) {
+      //   tooltip.transition()
+      //   .duration(250)
+      //   .style("opacity", 0);
+      // })
+      .on("mousedown", function(d) {return showAll(d.key) });
+
+      countryAvg.enter().append("text")
+      .attr("class", "countryAvgText")
+      .attr("transform", function(d,i,a) {
+        return  "rotate(" + i*360/a.length + ") translate(" + (- innerCircleRadius - 40) + ") rotate(-" + i*360/a.length + ")"})
+      .attr("dx", 0)
+      .attr("dy", 2.5)
+      .attr("font-size", function(d) {return radius(d.value.avg)/2})
+      .attr("text-anchor", "middle")
+      .attr("fill", "#fff")
+      .text(function(d) {return d.key })
+
+      var innerCircle = centerPosition.append("circle")
+                           .attr("cx", 0)
+                           .attr("cy", 0)
+                           .attr("r", innerCircleRadius)
+                           .attr("fill", "#f0d9c2")
+
+      function isFloat(x) { return !!(x % 1); }
+
+      function showAll(country) {
+        var filterCountry = ramenByCountry.filter(function(d) { return d.key == country });
+        var filterdData = filterCountry[0].values.filter(function(d) { return isFloat(+d.Stars)});
+        var packSiblings = d3.packSiblings(filterdData.map(function(d) { return {r: radius(+d.Stars), value:d}}  ));
+                            // .filter(function(d) { return -450 < d.x && d.x < 450 && -450 < d.y && d.y < 450; });
+        // console.log(packSiblings);
+
+        var size = Math.max(width, height);
+
+        svg.select("g").selectAll(".dish").remove();
+
+        var allDishes =  centerPosition.append("g").selectAll("circle")
+           .data(packSiblings)
+           .enter().append("circle")
+           .attr("class", "dish")
+           .style("fill", function(d) {
+             switch(d.value.Style) {
+                 case "Pack":
+                      return "#EF6F6C";
+                      break;
+                 case "Bowl":
+                      return "#E1B07E";
+                      break;
+                 case "Cup":
+                      return "#F3DE8A";
+                      break;
+                 case "Tray":
+                      return "#FCA17D";
+                      break;
+                 case "Restaurant":
+                      return "#8f441b";
+                      break;
+                 case "Box":
+                      return "#D39A87";
+                      break;
+                 case "Can":
+                      return "#892740";
+                      break;
+                 case "Bar":
+                      return "#CD533B";
+                      break;
+                 default :
+                      return "#EFC69B"
+             }
+            })
+           .style("stroke", "#A05441")
+           .style("stroke-width", 6)
+           .on("mouseover", function(d) {
+             tooltip.transition()
+             .duration(250)
+             .style("opacity", 1);
+
+             tooltip.html("<p><strong>" + "[" + d.value.Style + "] " + "</strong>"+ d.value.Brand + " | " + d.value.Variety + " | " + (+d.value.Stars) + "</p>")
+             .style("left", (d3.event.pageX - 20) + "px")
+             .style("top", (d3.event.pageY - 40) + "px")
+           })
+           .on("mouseout", function(d) {
+             tooltip.transition()
+             .duration(250)
+             .style("opacity", 0);
+           })
+           .attr("cx", function(d) { return Math.sin(d.angle = Math.tan(d.x, d.y)) * (size / Math.SQRT2+30); })
+           .attr("cy", function(d) { return Math.cos(d.angle = Math.tan(d.x, d.y)) * (size / Math.SQRT2+30); })
+           .attr("r", function(d) { return d.r; })
+           .transition()
+           .ease(d3.easeCubicOut)
+           .delay(function(d) { return Math.sqrt(d.x * d.x + d.y * d.y) * 5; })
+           .duration(500)
+           .attr("cx", function(d) { return d.x; })
+           .attr("cy", function(d) { return d.y; })
+
+          //  d3.selection.prototype.moveToFront = function() {
+          //    console.log(this)
+          //    return this.each(function(){
+          //   this.parentNode.appendChild(this);
+          //   });
+          // };
+          //
+          // allDishes.moveToFront();
+      }
+
+
+}
+</script>

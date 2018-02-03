@@ -1,23 +1,29 @@
+// fork from https://bl.ocks.org/pbeshai/65420c8d722cdbb0600b276c3adcc6e8
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
   <meta charset='UTF-8'>
   <script src="https://d3js.org/d3.v4.min.js"></script>
   <title>Animate thousands of points with canvas and D3</title>
   <style>
-    html,
-    body {
-      padding: 0;
-      margin: 0;
+    body{
+      margin: auto;
+      position: relative;
+      width: 800px;
+      background : #141414;
     }
-
     canvas {
       cursor: pointer;
-      background: #141414
+      background: #141414;
+      margin-top:5%;
     }
-
+    button {
+      position: absolute;
+      left:10px;
+      top: 20px;
+    }
     .play-control {
       position: absolute;
       top: 0px;
@@ -34,22 +40,14 @@
       font-weight: 100;
       cursor: pointer;
     }
-
     .play-control:hover {
       cursor: pointer;
-
-      /* color: #fff; */
-      /* text-shadow: #000 3px 3px 0px; */
-      /* background-color: rgba(0, 0, 0, 0.04); */
     }
   </style>
 </head>
-
 <body>
+  <button onclick="init()">Change arrange</button>
   <script>
-
-  // fork from https://bl.ocks.org/pbeshai/65420c8d722cdbb0600b276c3adcc6e8
-
     // canvas settings
     const width = 800;
     const height = 800;
@@ -98,6 +96,14 @@
       }
 
       ctx.restore();
+    }
+
+    function init() {
+      // d3.select('.play-control').style('display', '');
+      // timer.stop();
+      animate(layouts[currLayout]);
+      // remove the play control
+      // d3.select(this).style('display', 'none');
     }
 
     // animate the points to a given layout
@@ -151,25 +157,24 @@
       .attr('height', height * screenScale)
       .style('width', `${width}px`)
       .style('height', `${height}px`)
-      .on('click', function() {
-        d3.select('.play-control').style('display', '');
-        timer.stop();
-      });
+      // .on('click', function() {
+      // });
+
     canvas.node().getContext('2d').scale(screenScale, screenScale);
 
     // start off as a grid
     draw();
 
-    d3.select('body').append('div')
-      .attr('class', 'play-control')
+    // d3.select('body').append('div')
+      // .attr('class', 'play-control')
       // .text('PLAY')
-      .on('click', function() {
+      // .on('click', function() {
         // start the animation
-        animate(layouts[currLayout]);
+        // animate(layouts[currLayout]);
 
         // remove the play control
-        d3.select(this).style('display', 'none');
-      });
+        // d3.select(this).style('display', 'none');
+      // });
 
 
       /**

@@ -15,6 +15,7 @@ circle {
 </style>
 <svg width="800" height="800"><g transform="translate(400,400)"></g></svg>
 <script src="//d3js.org/d3.v4.0.0-alpha.35.min.js"></script>
+
 <script>
 
 var svg = d3.select("svg"),
@@ -30,11 +31,14 @@ var circles = d3.packSiblings(d3.range(500)
                 .map(function(r) { return {r: r}; }))
                 .filter(function(d) { return -450 < d.x && d.x < 450 && -450 < d.y && d.y < 450; });
 
+console.log(circles);
+
 svg.select("g")
    .selectAll("circle")
    .data(circles)
    .enter().append("circle")
    .style("fill", function(d) { return color(d.angle = Math.tan(d.x, d.y)); })
+   // .style("fill", function(d) { console.log(d.angle)})
    .attr("cx", function(d) { return Math.sin(d.angle) * (size / Math.SQRT2+30); })
    .attr("cy", function(d) { return Math.cos(d.angle) * (size / Math.SQRT2+30); })
    .attr("r", function(d) { return d.r; })
@@ -44,5 +48,5 @@ svg.select("g")
    .duration(2000)
    .attr("cx", function(d) { return d.x; })
    .attr("cy", function(d) { return d.y; });
-   
+
 </script>

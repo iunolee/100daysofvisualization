@@ -163,7 +163,7 @@ function ready(error, us, airports, flights) {
     tooltip.html("<p><strong>" + this.parentNode.childNodes[0].innerHTML + "</p>")
     .style("left", (d3.event.pageX + 15) + "px")
     .style("top", (d3.event.pageY - 28) + "px")
-    .style("color", );
+    // .style("color", );
   }
 
   function drawArcOut() {
@@ -179,7 +179,6 @@ function ready(error, us, airports, flights) {
       .attr("d", function(d) { return d ? "M" + d.join("L") + "Z" : null; })
       .on("mouseover", drawArc)
       .on("mouseout", drawArcOut);
-
 
 }
 

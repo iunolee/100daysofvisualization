@@ -1,19 +1,22 @@
+<!-- // fork from https://bl.ocks.org/mbostock/f48fcdb929a620ed97877e4678ab15e6 -->
+
 <!DOCTYPE html>
 <meta charset="utf-8">
-<svg width="600" height="600"></svg>
+<svg width="800" height="800"></svg>
 <style>
-svg{
-  background-color: #141414
-}
 body{
-  background-color: #fff
-
+  margin: auto;
+  position: relative;
+  width: 800px;
+  background : #141414;
+}
+svg{
+  margin-top: 5%;
+  background-color: #141414
 }
 </style>
 <script src="//d3js.org/d3.v4.min.js"></script>
 <script>
-
-// fork from https://bl.ocks.org/mbostock/f48fcdb929a620ed97877e4678ab15e6
 
 var random = d3.randomNormal(0, 0.8),
     sqrt3 = Math.sqrt(4),

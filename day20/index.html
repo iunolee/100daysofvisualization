@@ -1,12 +1,24 @@
-<!-- <!DOCTYPE html> -->
+<!-- // fork from https://bl.ocks.org/mbostock/d1d81455dc21e10f742f -->
+
+<!DOCTYPE html>
+<style>
+body{
+  margin: auto;
+  position: relative;
+  width: 800px;
+  background : #fff;
+}
+canvas {
+  display: block;
+  margin-top : 5%;
+}
+</style>
 <meta charset="utf-8">
-<canvas width="600" height="600"></canvas>
+<canvas width="800" height="800"></canvas>
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script src="//d3js.org/d3-voronoi.v0.3.min.js"></script>
 <script src="//d3js.org/d3-timer.v0.1.min.js"></script>
 <script>
-
-// fork from https://bl.ocks.org/mbostock/d1d81455dc21e10f742f
 
   var canvas = document.querySelector("canvas"),
     width = canvas.width,

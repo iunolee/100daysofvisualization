@@ -1,13 +1,20 @@
 <!DOCTYPE html>
-<svg width="600" height="600"></svg>
 <style>
+body{
+  margin: auto;
+  position: relative;
+  width: 800px;
+  background : #C497C6;
+}
 svg {
+  margin-top: 5%;
   background: #C497C6;
 }
 </style>
-
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
+<svg width="800" height="800"></svg>
+
 <script>
 
 //fork from https://bl.ocks.org/mbostock/7833311
@@ -75,7 +82,6 @@ function updateData()  {
     .exit()
     .remove();
 
-
     hexagon = hexagon.enter().append("path")
                      .attr("d", hexbin.hexagon(10))
                      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
@@ -84,8 +90,5 @@ function updateData()  {
                      .attr("fill", function(d) { return color(d.length); });
 
    if(radius > 60) radius -= 2; else radius = 60;
-   // console.log(radius);
-
-  // });
 }
 </script>
