@@ -30,7 +30,7 @@ button {
   outline: 0;;
  }
 svg {
-margin-top:5%;  
+margin-top:5%;
 }
 button:active {
   background-color: #141414;
@@ -58,11 +58,12 @@ var svg = d3.select("svg"),
 var data = d3.range(2000).map(function(i) {return [Math.random()*width, Math.random()*height, Math.random()*5]});
 
 function update(data) {
+  console.log(data)
   var t = d3.transition()
             .duration(2000);
   // JOIN new data with old elements.
   var dot = g.selectAll("circle")
-              .data(data, function(d) { return d; });
+              .data(data, function(d) { console.log(d); });
 
   // EXIT old elements not present in new data.
   dot.exit()

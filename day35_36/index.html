@@ -1,0 +1,250 @@
+<!-- dataset from https://github.com/fivethirtyeight/data/tree/master/fandango -->
+
+<!DOCTYPE html>
+<style>
+  body {
+    margin: auto;
+    position: relative;
+    width: 1000px;
+    background: #141414;
+    color: #fff;
+  }
+
+  .tooltip {
+    text-align: center;
+    position: absolute;
+    padding: 5px;
+    font-size: 0.75em;
+    pointer-events: none;
+    background: #fff;
+    border: none;
+    border-radius: 0px;
+    font-family: futura;
+  }
+
+  .tooltip p {
+    margin: 0;
+    padding: 0;
+  }
+
+  .reviewButton {
+    font-family: futura;
+    font-weight: 900;
+    font-size: 1.25em;
+    width: 200px;
+    height: 25px;
+    color: #9B9B9B;
+    background: #141414;
+    border: none;
+  }
+
+  button {
+    outline: 0;
+  }
+
+  button:focus {
+    color: #fff;
+  }
+
+  #user {
+    color: #8E3A7B;
+    position: absolute;
+    left: 12%;
+  }
+
+  #critic {
+    color: #2486D6;
+    position: absolute;
+    left: 60%;
+  }
+
+  #unanimous {
+    color: #6969bc;
+    position: absolute;
+    left: 35.5%;
+  }
+
+  #side {
+    margin-top: 0.5%;
+    color: white;
+    font-family: futura;
+    font-weight: 100;
+    border: none;
+    width: 200px;
+    height: 25px;
+    background: #141414;
+  }
+
+  #review {
+    margin-top: 0.5%;
+    margin-left: 16.5%;
+  }
+
+  .q {
+    color: #9B9B9B;
+    font-size: 0.75em;
+    font-family: futura;
+    font-weight: 100;
+    text-align: center;
+    width: 75%;
+    margin-top: 3%;
+  }
+</style>
+<div class="q">"Where do you go for movie review?""</div>
+<div id="review">
+  <button class="reviewButton" id="RottenTomatoes" value="RottenTomatoes">|RottenTomatoes|</button>
+  <button class="reviewButton" id="Metacritic" value="Metacritic">|Metacritic|</button>
+</div>
+<div class="q">"Who do you care about more?""</div>
+<div id="side">
+  <div class="sideButton" id="user" value="user">|Users|</div>
+  <div class="sideButton" id="unanimous" value="unanimous">|Both|</div>
+  <div class="sideButton" id="critic" value="critic">|Critics|</div>
+</div>
+<svg width="800" height="800"></svg>
+<script src="https://d3js.org/d3.v4.js"></script>
+<script>
+  var margin = {
+    top: 20,
+    right: 20,
+    bottom: 20,
+    left: 20
+  }
+
+  var svg = d3.select("svg"),
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom;
+
+  var g = svg.append("g")
+
+  var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+  // Draw center line
+  var centerLine = svg.append("rect")
+    .attr("transform", "translate(" + width / 2 + "," + "10)")
+    .attr("width", 1)
+    .attr("height", height - 100)
+    .attr("x", 0)
+    .attr("y", 0)
+    .style("fill", "gray")
+
+  var tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+  d3.queue()
+    .defer(d3.csv, 'movie.csv')
+    .await(init);
+
+  function init(error, movie) {
+
+    var finalData = [];
+
+    var reviewButton = document.getElementsByClassName("reviewButton")
+    for (var i = 0; i < reviewButton.length; i++) {
+      reviewButton[i].onclick = function() {
+        getData(this.value)
+        visualization()
+      }
+    };
+
+    function getData(source) {
+      finalData = [];
+      movie.forEach(function(data) {
+        var title = data.FILM;
+        var gap;
+        if (source == "RottenTomatoes") {
+          gap = data.RT_norm - data.RT_user_norm;
+        } else if (source == "Metacritic") {
+          gap = data.Metacritic_norm - data.Metacritic_user_nom;
+        }
+        finalData.push({
+          title,
+          gap
+        });
+      });
+      finalData.sort(function(a, b) {
+        return (b.gap - a.gap)
+      })
+      console.log(finalData)
+    }
+
+    function visualization() {
+      // set the bar height
+      var barHeight = 3;
+
+      // set the ranges
+      var xPositive = d3.scaleLinear().domain([0, d3.max(finalData, function(d) {
+        return d.gap
+      })]).range([0, width / 2 * 0.9]);
+      var xNegative = d3.scaleLinear().domain([d3.min(finalData, function(d) {
+        return d.gap
+      }), 0]).range([width / 2 * 0.9, 0]);
+      var color = d3.scaleLinear().domain([d3.min(finalData, function(d) {
+        return d.gap
+      }), d3.max(finalData, function(d) {
+        return d.gap
+      })]).range(["#8E3A7B", "#2486D6"]).interpolate(d3.interpolateHcl);
+
+      // Draw each data
+      var rect = g.selectAll("rect")
+        .data(finalData);
+
+      rect.enter().append("rect")
+        .attr("class", "new")
+        .merge(rect)
+        .attr("height", barHeight)
+        .attr("y", function(d, i) {
+          return i * barHeight * 1.5
+        })
+        .style("fill", function(d) {
+          if (d.gap == 0) {
+            return "#141414";
+          } else {
+            return color(d.gap);
+          }
+        })
+        .attr("fill-opacity", 1)
+        .attr("transform", function(d) {
+          return "translate(" + width / 2 + "," + "10)"
+        })
+        .on("mouseover", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+            .style("color", color(d.gap))
+          tooltip.html("<p><strong>" + d.title + "</p>")
+            .style("left", (d3.event.pageX - 80) + "px")
+            .style("top", (d3.event.pageY - 40) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+        .transition().duration(2000).delay(function(d, i) {
+          return i * 10;
+        })
+        .attr("width", function(d) {
+          if (d.gap > 0) {
+            return xPositive(d.gap)
+          } else if (d.gap < 0) {
+            return xNegative(d.gap)
+          } else if (d.gap == 0) {
+            return 8;
+          }
+        })
+        .attr("x", function(d) {
+          if (d.gap > 0) {
+            return 0;
+          } else if (d.gap < 0) {
+            return -1 * xNegative(d.gap);
+          } else if (d.gap == 0) {
+            return -4;
+          }
+        });
+    }
+  }
+</script>
