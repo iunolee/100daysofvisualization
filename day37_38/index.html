@@ -1,0 +1,248 @@
+<!-- dataset from https://github.com/atmccann/mta-lost-found/blob/master/data/all-data.csv -->
+
+<!DOCTYPE html>
+<style>
+  body {
+    margin: auto;
+    position: relative;
+    width: 1280px;
+    background: #141414;
+    color: #fff;
+  }
+
+  svg {
+    margin-top: 2%;
+    margin-left: 0%;
+    border: none;
+  }
+
+  .tooltip {
+    text-align: center;
+    position: absolute;
+    padding: 5px;
+    font-size: 0.75em;
+    pointer-events: none;
+    background: transparent;
+    border: none;
+    border-radius: 0px;
+    font-family: futura;
+    color: #fff;
+    font-size: 1em;
+  }
+
+  .tooltip p {
+    margin: 0;
+    padding: 0;
+  }
+
+  input {
+    font-family: futura;
+    font-size: 1.5em;
+    margin-top: 2%;
+    margin-left: 30%;
+    background: #141414;
+    width: 420px;
+    color: white;
+    background-color: transparent;
+    border-top: none;
+    border-right: none;
+    border-bottom: 3px solid #a7A9AC;
+    border-left: none;
+    outline: none;
+  }
+
+  button {
+    font-size: 2em;
+    margin: auto;
+    background: #141414;
+    border-style: hidden;
+    display: inline;
+    outline: 0;
+    color: white;
+  }
+
+  button:focus {
+    color: #a7A9AC;
+  }
+
+  h1 {
+    font-size: 1.5em;
+    font-family: futura;
+    margin-left: 30%;
+    margin-bottom: 0%;
+  }
+</style>
+<h1><span style="color:#996633">Guess</span><span style="color:#fccc0a"> what</span><span style="color:#ff6319"> people</span><span style="color:#ee352e"> lost</span><span style="color:#b933ad"> in</span><span style="color:#6cbe45"> MTA?!</span></h1>
+<input id="input"></input>
+<button id="button">?</button>
+<svg width="1280" height="700"></svg>
+<script src="https://d3js.org/d3.v4.js"></script>
+<script>
+  const margin = {
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0
+  }
+
+  const svg = d3.select("svg"),
+    width = +svg.attr("width") - margin.left - margin.right,
+    height = +svg.attr("height") - margin.top - margin.bottom;
+
+  const g = svg.append("g")
+
+  const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+  d3.queue()
+    .defer(d3.csv, 'data.csv')
+    .await(init);
+
+  function init(error, lost) {
+    const temp = new Array();
+    const finalData = new Array();
+    const itemList = new Array();
+    // console.log(lost);
+
+    //Organize dataset
+    for (let i = 1; i < lost.columns.length; i++) {
+      let item = lost.columns[i]
+      let partItem = item.split(".");
+      if (partItem[partItem.length - 1] == "") {
+        partItem = partItem[partItem.length - 2].toUpperCase()
+      } else {
+        partItem = partItem[partItem.length - 1].toUpperCase()
+      }
+      let count = parseInt(lost[250][item]);
+      temp.push({
+        item: partItem,
+        count: count
+      })
+    }
+
+    let filterdData = d3.nest()
+      .key(function(d) {
+        return d.item;
+      })
+      .rollup(function(v) {
+        return d3.sum(v, function(d) {
+          return d.count;
+        });
+      })
+      .entries(temp);
+
+    for (let i = 0; i < filterdData.length; i++) {
+      let color = "rgb(" + Math.floor(255 * Math.random()) + "," + Math.floor(255 * Math.random()) + "," + Math.floor(255 * Math.random()) + ")";
+      let item = filterdData[i].key;
+      itemList.push(item);
+
+      let count = filterdData[i].value;
+      for (let j = 0; j < count; j = j + 100) {
+        let recentDataByItem = {
+          item: item,
+          x: Math.random() * width * 10,
+          y: Math.random() * height * 10,
+          color: color,
+          count: count
+        };
+        if (item == "date") {
+          console.log("date is excluded");
+        } else {
+          finalData.push(recentDataByItem);
+        }
+      }
+    }
+
+    // console.log(itemList);
+    // console.log(finalData);
+
+    // Start visualization
+    visualize(finalData, itemList);
+  }
+
+  function visualize(data, list) {
+
+    const circle = svg.selectAll("circle")
+      .data(data)
+      .enter().append("circle")
+      .attr("class", function(d) {
+        return d.item;
+      })
+      .attr("cx", function(d) {
+        return d.x;
+      })
+      .attr("cy", function(d) {
+        return d.y;
+      })
+      .attr("r", function(d) {
+        return 5;
+      })
+      .style("fill", function(d) {
+        return d.color;
+      })
+      .style("fill-opacity", function(d) {
+        return 0.2;
+      })
+      .on("mouseover", function(d) {
+        tooltip.transition()
+          .duration(250)
+          .style("opacity", 1)
+          .style("color", d.color)
+        tooltip.html("<p><strong>" + replaceChar(d.item) + "<stong>" + " : " + d.count + "times" + "</p>")
+          .style("left", (d3.event.pageX - 150) + "px")
+          .style("top", (d3.event.pageY - 20) + "px")
+      })
+      .on("mouseout", function(d) {
+        tooltip.transition()
+          .duration(250)
+          .style("opacity", 0);
+      });
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.1, 9])
+      .on("zoom", zoomed);
+
+    svg.call(zoom);
+
+    zoom.translateTo(svg, 5000, 2000);
+    zoom.scaleTo(svg, 0.3);
+
+    function zoomed() {
+      circle.attr("transform", d3.event.transform)
+    }
+
+    // If the answer is right, make circles show clearly
+    document.getElementById("button").onclick = function() {
+      let answer = document.getElementById("input").value.toUpperCase();
+      if (list.indexOf(answer) != -1) {
+        answer = "." + answer;
+        alert("Got it!");
+        d3.selectAll(answer)
+          .transition().duration(1000)
+          .style("fill-opacity", 1)
+          .attr("r", function(d) {
+            return 25;
+          })
+          .transition().delay(1000).duration(750)
+          .attr("r", function(d) {
+            return 5;
+          });
+      } else {
+        alert("Nope!");
+      }
+    }
+  }
+
+  function replaceChar(word) {
+    if (word.length > 2) {
+      let aliveWord = word.substring(0, 2);
+      let deadWord = word.substring(2, word.length);
+      return aliveWord + "*".repeat(deadWord.length);
+    } else if (word.length <= 2) {
+      let aliveWord = word.substring(0, 1);
+      let deadWord = word.substring(1, word.length);
+      return aliveWord + "*".repeat(deadWord.length);
+    }
+  }
+</script>
