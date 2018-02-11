@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: futura;
+    margin: auto;
+    position: relative;
+    width: 1200px;
+    background: #f7c881;
+    color: #141414;
+  }
+
+  .active {
+    /* stroke: #000; */
+    /* stroke-width: 2px; */
+  }
+
+  .tooltip {
+    color: #A05441;
+    text-align: center;
+    position: absolute;
+    padding: 5px;
+    font-size: 0.75em;
+    pointer-events: none;
+    background: #fff;
+    border: 1px solid #A05441;
+    border-radius: 0px;
+    font-family: futura;
+  }
+
+  .tooltip p {
+    margin: 0;
+    padding: 0;
+  }
+
+  svg {
+    margin-left: 5%;
+    margin-top: 10%;
+  }
+
+  #three {
+    color: #ff671f;
+    width: 350px;
+    height: 150px;
+    position: absolute;
+    left: 25%;
+  }
+
+  #threePct {
+    color: #0057b8;
+    width: 350px;
+    height: 150px;
+    position: absolute;
+    left: 55%;
+  }
+
+  #threeStat {
+    margin-top: -5%;
+    margin-left: 7%;
+    font-size: 3.5em;
+  }
+
+  #threePctStat {
+    margin-top: -5%;
+    margin-left: 2%;
+    font-size: 3.5em;
+  }
+</style>
+<div id="three">
+  <p>Total 3-point / Game</p>
+  <h1 id="threeStat"></h1>
+</div>
+<div id="threePct">
+  <p>3-point (%) / Game</p>
+  <h1 id="threePctStat"></h1>
+</div>
+<svg width="1000" height="1200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <image style="opacity:0.6;" href="knicks2.png" height="531" width="1000"/>    ></svg>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script>
+  const svg = d3.select("svg");
+  const width = +svg.attr("width");
+  const height = +svg.attr("height");
+
+  const tooltip = d3.select("body").append("div")
+    .attr("class", "tooltip")
+    .style("opacity", 0);
+
+  d3.queue()
+    .defer(d3.csv, 'nba2017.csv')
+    .await(init);
+
+  function init(error, rawData) {
+
+    // If you update data, you should chage this number to current total number of games
+    let totalGame = 56;
+
+    // Arrage data by Team
+    const dataByTeam = d3.nest()
+      .key(function(d) {
+        return d.Tm;
+      })
+      .rollup(function(v) {
+        let totalMade = d3.sum(v, function(d) {
+          return +d["3P"]
+        });
+        let totalAtmp = d3.sum(v, function(d) {
+          return +d["3PA"]
+        });
+        return {
+          avgMade: +(totalMade / totalGame).toFixed(1),
+          avgPct: +(totalMade / totalAtmp).toFixed(3)
+        }
+      })
+      .entries(rawData);
+
+    const dataByName = rawData.map(function(d,i) {
+      let x,y;
+      if (d.Tm == "NYK") {
+        x = getRandomFloat(50, 950);
+        y = getRandomFloat(100, 500);
+      } else {
+        // x = getRandomFloat(50, 950);
+        // y = getRandomFloat(580, 1150);
+        x = 25+((i%25) * 39);
+        y = 565+(Math.floor(i/25) * 29);
+      }
+
+      return {
+        name: d.Player,
+        threeMade: +d["3P"],
+        pos: d.Pos,
+        threeAtmp: +d["3PA"],
+        threePct: +d["3P%"],
+        x: x,
+        y: y
+      }
+    })
+
+
+    // Set range for visualization
+    const radius = d3.scaleLinear().domain([d3.min(dataByName, function(d) {return d.threeMade}), d3.max(dataByName, function(d) {return d.threeMade;})]).range([7.5, 15]);
+    const stroke = d3.scaleLinear().domain([d3.min(dataByName, function(d) {return d.threePct;}), d3.max(dataByName, function(d) {return d.threePct;})]).range([0.5, 7.5]);
+
+    let circles = svg.selectAll("circle")
+      .data(dataByName)
+      .enter().append("circle")
+      .attr("cx", function(d) {
+        return d.x;
+      })
+      .attr("cy", function(d) {
+        return d.y;
+      })
+      .attr("r", function(d) {
+        // console.log(radius(d.threeMade))
+        return radius(d.threeMade);
+      })
+      .style("fill", function(d) {
+        return "#ff671f"
+        // if (d.pos == "PG") return "#585123";
+        // else if (d.pos == "SG") return "#EEC170";
+        // else if (d.pos == "SF") return "#F2A65A";
+        // else if (d.pos == "PF") return "#F58549";
+        // else if (d.pos == "C") return "#772F1A";
+      })
+      .style("stroke", "#0057b8")
+      .style("stroke-width", function(d) {
+        // return 5;
+        return stroke(d.threePct);
+      })
+      .on("mouseover", function(d) {
+        tooltip.transition()
+          .duration(250)
+          .style("opacity", 1)
+          .style("color", "#ff671f")
+        tooltip.html("<p><strong>" + d.name.split() + "</p>")
+          .style("left", (d3.event.pageX - 80) + "px")
+          .style("top", (d3.event.pageY - 40) + "px")
+      })
+      .on("mouseout", function(d) {
+        tooltip.transition()
+          .duration(250)
+          .style("opacity", 0);
+      })
+      .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended)
+      );
+
+
+    // Initial calculation of current Knicks stats
+    getBoundary();
+
+
+    // Set boundary of Knicks court image and update stats
+    function getBoundary() {
+
+      circles.classed("knicks", false);
+
+      circles._groups[0].forEach(function(player) {
+        let cx = player.getAttribute("cx");
+        let cy = player.getAttribute("cy");
+        if (cx > 50 && cx < 950 && cy > 100 && cy < 500) {
+          d3.select(player).attr("class", "knicks")
+        }
+      })
+
+      // Update stats DOM elements
+      document.getElementById("threeStat").innerHTML = (calcStats().threeMadeAvg).toFixed(1);
+      document.getElementById("threePctStat").innerHTML = (calcStats().threePctAvg * 100).toFixed(1);
+    }
+
+
+    // Calculation stats within the boundary of Knicks court image
+    function calcStats() {
+      let knicksPlayers = d3.selectAll(".knicks")
+      let threeMadeTotal = 0;
+      let threeAtmpTotal = 0;
+
+      knicksPlayers._groups[0].forEach(function(player) {
+        threeMadeTotal = threeMadeTotal + player.__data__.threeMade;
+        threeAtmpTotal = threeAtmpTotal + player.__data__.threeAtmp;
+      })
+      let result = {
+        threeMadeAvg: +(threeMadeTotal / totalGame),
+        threePctAvg: +(threeMadeTotal / threeAtmpTotal)
+      }
+      return result;
+    }
+
+
+    function dragstarted(d) {
+      d3.select(this).raise().classed("active", true);
+    }
+
+    function dragged(d) {
+      d3.select(this).attr("cx", d.x = d3
+        .event.x).attr("cy", d.y = d3.event.y);
+    }
+
+    function dragended(d) {
+      getBoundary();
+      d3.select(this).classed("active", false);
+    }
+  }
+
+  function getRandomFloat(min, max) {
+    return Math.random() * (max - min) + min;
+  }
+</script>
