@@ -1,0 +1,151 @@
+<!-- dataset from https://research.google.com/audioset/download.html -->
+
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+  body {
+    /* font-family: futura; */
+    font-family: 'Catamaran', sans-serif;
+    margin: auto;
+    position: relative;
+    width: 1000px;
+    background: #fff;
+    /* background: linear-gradient(to right, #fff , #ff0000); */
+  }
+
+  #select {
+    display: inline;
+    width: 460px;
+    height: 50px;
+    /* margin-left: 35%; */
+    margin-left: 1%;
+    /* padding-bottom:5%; */
+    -webkit-appearance: none;
+    -webkit-border-radius: 0px;
+    border-bottom: 1px #ff0000 solid;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    font-size: 0.9em;
+    font-family: futura;
+    background-color: #fff;
+    color: #ff0000;
+    font-weight: 900;
+    outline: none;
+  }
+
+  .grid-container {
+    margin-top: 1%;
+    margin-left: 8%;
+    display: inline-grid;
+    grid-gap: 5px 5px;
+    grid-template-columns: auto auto auto auto auto auto;
+    background-color: #fff;
+    padding: 10px;
+  }
+
+  .grid-item {
+    background-color: #fff;
+    border: none
+    /* padding: 5px; */
+    /* font-size: 5px; */
+    /* text-align: center; */
+  }
+</style>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<link href="https://fonts.googleapis.com/css?family=Catamaran:900" rel="stylesheet">
+
+<body>
+  <div id="input-section">
+    <h2 style="font-size:2.5em; color:#141414; margin-left:10%; margin-top:5%">I want to hear <select id="select"></select>
+</h2>
+  </div>
+  <div class="grid-container"></div>
+  <script>
+    d3.queue()
+      .defer(d3.csv, 'balanced_train_segments.csv')
+      .defer(d3.csv, 'class_labels_indices.csv')
+      .await(init);
+
+    const colors = ["#FF6F59", "#E01A4F"]
+
+    function init(error, rawData, classData) {
+      // console.log(rawData)
+      // console.log(classData)
+
+      // Arrange data by category
+      const classifier = d3.map(classData, function(d) {
+        return d.mid
+      })
+
+      const finalData = new Array();
+      rawData.forEach(function(d) {
+
+        let id = d[" positive_labels"].split('"')[1]
+        let className = classifier.get(id).display_name;
+        let link = "https://www.youtube.com/watch?v=" + d["# YTID"] + "&autoplay=1&&start=" + Math.floor(d[" start_seconds"].trim()) + "&end=" + Math.floor(d[" end_seconds"].trim());
+        let ytid = d["# YTID"];
+
+        finalData.push({
+          ytid: ytid,
+          link: link,
+          className: className
+        })
+      });
+
+      let finalDataByClass = d3.nest()
+        .key(function(d) {
+          return d.className;
+        })
+        .entries(finalData);
+
+      // console.log(finalDataByClass)
+
+      // Make selection of all categories and filter and pass only selected data
+      let select = d3.select("#select")
+        .on('change', function() {
+          finalDataByClass = d3.map(finalDataByClass, function(d) {
+            return d.key
+          })
+          let selectedValue = select.property('value')
+          let filteredData = finalDataByClass.get(selectedValue).values
+          showData(filteredData)
+        })
+
+      select.selectAll("option")
+        .data(finalDataByClass)
+        .enter().append("option")
+        .attr("value", function(d) {
+          return d.key
+        })
+        .text(function(d) {
+          return d.key
+        })
+    }
+
+
+    function showData(data) {
+
+      d3.selectAll(".grid-item").remove()
+
+      // console.log(filteredData)
+      console.log(data)
+
+      let thumbnail = d3.select(".grid-container")
+
+      thumbnail.selectAll("img")
+        .data(data)
+        .enter().append("img")
+        .attr("class", "grid-item")
+        .attr("src", function(d) {
+          return "http://img.youtube.com/vi/" + d.ytid + "/default.jpg"
+        })
+        .on("mousedown", function(d) {
+
+          let leftPos = screen.width * 0.2;
+          let topPos = screen.height * 0.3;
+          window.open(d.link, "popup", 'width=480, height=480, top=' + topPos + ', left=' + leftPos + "'");
+
+        })
+    }
+  </script>
