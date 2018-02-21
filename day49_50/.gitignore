@@ -1,0 +1,6 @@
+#Ignore data folder 
+node_modules
+
+#Ignore files
+moon.ndjson
+pacakge-lock.json
