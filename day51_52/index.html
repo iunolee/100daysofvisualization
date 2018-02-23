@@ -1,0 +1,150 @@
+<!-- dataset from https://github.com/googlecreativelab/quickdraw-dataset -->
+<!-- code for drawing - fork from  https://bl.ocks.org/enjalot/a2b28f0ed18b891f9fb70910f1b8886d -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    body {
+      font-family: futura;
+      margin: auto;
+      position: relative;
+      width: 100000px;
+      background: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <svg width="100000" height="100000"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+
+    d3.queue()
+      .defer(d3.json, 'zigzag2.json')
+      .await(init);
+
+    function init(err, rawData) {
+
+      let count = 0;
+
+      const g = svg.append("g")
+
+      // Initial drawing
+      drawPath(rawData[count], 150, 400)
+
+
+
+      function drawPath(data, startX, startY) {
+
+        const line = d3.line()
+          .x(function(d) {
+            return d.x
+          })
+          .y(function(d) {
+            return d.y
+          })
+          .curve(d3.curveBasis)
+
+
+        const groupsE = g.append("g")
+          .datum(data)
+          .attr("class", "drawing")
+          .style("fill", "none")
+          .style("stroke", "#141414")
+          .style("stroke-width", 3);
+
+        const pathsE = groupsE.selectAll("path.stroke").data(function(d) {
+          return d.drawing.map(function(s) {
+            var points = []
+            s[0].forEach(function(x, i) {
+              points.push({
+                x: x,
+                y: s[1][i]
+              })
+            })
+            return points;
+          })
+        }).enter().append("path").classed("stroke", true)
+
+        pathsE.attr("d", line)
+
+        let pathEl = pathsE.node();
+        let posStart = pathEl.getPointAtLength(0);
+        var BBox = pathEl.getBBox();
+        let posEnd = pathEl.getPointAtLength(pathEl.getTotalLength());
+
+        const circle =
+          g.append("circle")
+          .attr("cx", startX)
+          .attr("cy", startY)
+          .attr("r", "7.5")
+          .attr("fill", "#e5395e")
+          .attr("fill-opacity", 0)
+          .transition()
+          .duration(250)
+          .attr("fill-opacity", 0.8)
+          .transition()
+          .delay(500).duration(250)
+          .attr("fill-opacity", 0)
+
+        const text =
+          g.append("text").datum(data)
+          .attr("x", startX - 100)
+          .attr("y", startY + 100)
+          .attr("font-size", "50")
+          .text(function(d) {
+            return "from " + d.countrycode + " / " + d.timestamp.split(" ")[0]
+          })
+          .attr("fill", "#e5395e")
+          .attr("fill-opacity", 0)
+          .transition()
+          .duration(250)
+          .attr("fill-opacity", 0.8)
+          .transition()
+          .delay(500).duration(250)
+          .attr("fill-opacity", 0)
+
+
+        //Translate to the end point of previous path
+        pathsE
+          .attr("transform", function(d, i) {
+            return "translate(" + [startX - posStart.x, startY - posStart.y] + ")"
+          })
+          .transition()
+          .ease(d3.easeExp)
+          .duration(750)
+          .attrTween("stroke-dasharray", tweenDash)
+          .on("end", function(d) {
+            count++;
+            drawPath(rawData[count], startX - posStart.x + posEnd.x, startY - posStart.y + posEnd.y)
+          });
+
+        console.log(count)
+
+        const zoom = d3.zoom()
+          .scaleExtent([0.001, 100])
+          .on("zoom", function() {
+            g.attr("transform", d3.event.transform)
+          })
+
+        svg.call(zoom)
+
+      }
+
+      function tweenDash() {
+        var l = this.getTotalLength(),
+          i = d3.interpolateString("0," + l, l + "," + l);
+        return function(t) {
+          return i(t);
+        };
+      }
+
+    }
+  </script>
+</body>
