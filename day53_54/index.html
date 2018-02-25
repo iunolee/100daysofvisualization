@@ -1,0 +1,257 @@
+<!-- dataset from http://www.un.org/en/development/desa/population/migration/data/estimates2/estimates17.shtml -->
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    body {
+      font-family: futura;
+      margin: auto;
+      position: relative;
+      width: 1000px;
+      background: #141414;
+    }
+
+    svg {
+      background: #141414;
+    }
+
+    #selectLeft {
+      display: inline-block;
+      width: 300px;
+      height: 30px;
+      margin-top: 5%;
+      margin-left: 10%;
+      padding-left: 1%;
+      font-size: 0.75em;
+      font-family: futura;
+      background-color: #141414;
+      color: #fff;
+      font-weight: 100;
+      outline: none;
+      text-align: center;
+    }
+
+    #selectRight {
+      display: inline-block;
+      width: 300px;
+      height: 30px;
+      margin-top: 5%;
+      margin-left: 20%;
+      padding-left: 1%;
+      font-size: 0.75em;
+      font-family: futura;
+      background-color: #141414;
+      color: #fff;
+      font-weight: 100;
+      outline: none;
+      text-align: center;
+    }
+
+    .tooltip {
+      width: 150px;
+      text-align: center;
+      position: absolute;
+      font-size: 0.5em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      font-family: futura;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="input-section">
+    <select id="selectLeft">
+    <option value="" selected>Select first counrty</option>
+</select>
+    <select id="selectRight">
+      <option value="" selected>Select second counrty</option>
+</select>
+  </div>
+  <svg width="1000" height="800"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+
+    d3.queue()
+      .defer(d3.tsv, 'migrant.tsv')
+      .await(init);
+
+    function init(err, rawData) {
+
+      const column = rawData.columns;
+
+      const dataByDestination = d3.nest()
+        .key(function(d) {
+          return d.destination;
+        })
+        .key(function(d) {
+          return d.year;
+        })
+        .rollup(function(c) {
+          // console.log(c[0][column[2]])
+          let value = [];
+          for (let i = 5; i < column.length; i++) {
+            let country = column[i];
+            let num = c[0][column[i]];
+            num = num.split(',').join('');
+            num = +num;
+            if (isNaN(num) == true) {
+              num = 0
+            }
+            value.push({
+              country: country,
+              num: num
+            })
+          }
+          return value;
+        })
+        .entries(rawData);
+
+      const mapDestination = d3.map(dataByDestination, function(d) {
+        return d.key
+      })
+      const countryList = [];
+      dataByDestination.forEach(function(d) {
+        countryList.push(d.key)
+      })
+
+      countryList.sort();
+
+      // Make selection of all categories and filter and pass only selected data
+      let selectLeft = d3.select("#selectLeft")
+        .on('change', function() {
+          let selectedCountry = selectLeft.property('value')
+          let countryLeft = mapDestination.get(selectedCountry)
+          d3.selectAll(".pos_250").remove();
+          visulaize(countryLeft, 250)
+        })
+
+      let selectRight = d3.select("#selectRight")
+        .on('change', function() {
+          let selectedCountry = selectRight.property('value')
+          let countryRight = mapDestination.get(selectedCountry)
+          d3.select(".pos_750").remove();
+          visulaize(countryRight, 750)
+
+        })
+
+      selectLeft.selectAll("option")
+        .data(countryList)
+        .enter().append("option")
+        .attr("value", function(d) {
+          return d;
+        })
+        .text(function(d) {
+          return d;
+        })
+
+      selectRight.selectAll("option")
+        .data(countryList)
+        .enter().append("option")
+        .attr("value", function(d) {
+          return d;
+        })
+        .text(function(d) {
+          return d;
+        })
+    }
+
+    function visulaize(data, posX) {
+
+      let finalData = data.values[6].value
+
+      let sum = d3.sum(finalData, function(d) {
+        return d.num;
+      });
+
+
+      const widthScale = d3.scaleLinear().domain([0, d3.max(finalData, function(d) {
+        return d.num;
+      })]).range([1.5, 200]);
+
+      const colorScale = d3.scaleSequential(d3.interpolateWarm)
+        .domain([0, 231]);
+
+      const g = svg.append("g")
+        .attr("transform", "translate(" + posX + "," + height / 2 + ")")
+        .attr("class", "pos_" + posX)
+
+      const graphs = g.selectAll("rect")
+        .data(finalData);
+
+      let count = 0;
+      finalData.forEach(function(d) {
+        if (d.num > 0) count++
+      })
+
+      // Add the total number of origin countries inside the circle
+      let originsInfo = g.append("text")
+        .attr("x", -27.5)
+        .attr("y", 5)
+        .attr("fill", "#fff")
+        .attr("font-size", "0.75em")
+        .text(count + " origins")
+
+
+      graphs.enter().append("rect")
+        .attr("class", "graph")
+        .attr("transform", function(d, i, a) {
+          return "rotate(" + i * 360 / a.length + ") translate(" + 50 + ")"
+        })
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("height", 1.5)
+        .on("mouseover", function(d, i) {
+
+          originsInfo.transition()
+            .duration(250)
+            .style("opacity", 0)
+
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+            .style("color", colorScale(i))
+          tooltip.html("<p><strong>" + d.country + "</br>" + d.num + "</p>")
+            .style("left", posX - 75 + "px")
+            .style("top", height / 2 + 70 + "px")
+        })
+        .on("mouseout", function(d) {
+          originsInfo.transition()
+            .duration(250)
+            .style("opacity", 1)
+
+
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+
+        .attr("fill", function(d, i) {
+          return colorScale(i)
+        })
+        .attr("fill-opacity", 0.75)
+        .transition().duration(750).delay(function(d, i) {
+          return i * 5;
+        })
+        .attr("width", function(d) {
+          return widthScale(d.num);
+        })
+
+    }
+  </script>
