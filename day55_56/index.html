@@ -1,0 +1,227 @@
+<!-- The population dataset from https://data.worldbank.org/indicator/SP.POP.TOTL -->
+<!-- The car dataset from http://www.oica.net/category/vehicles-in-use/ -->
+<!-- Half circle : fork from https://bl.ocks.org/HarryStevens/8e11384213b3dd54061fc4fc5add48aa -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    body {
+      font-family: futura;
+      margin: auto;
+      position: relative;
+      width: 1000px;
+      background: #141414;
+    }
+
+    svg {
+      margin-top:5%;
+      background: #141414;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: absolute;
+      font-size: 0.75em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      font-family: futura;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+
+    #populationButton, #carButton {
+      border-radius: 0%;
+      background: #141414;
+      color:#fff;
+      outline: none;
+      font-family :futura;
+      margin-left: 0.25%;
+    }
+
+    #populationButton:focus, #carButton:focus {
+      background: #fff;
+      color:#141414;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div style="position:fixed; width:500px; margin-left:0%">
+    <p style="color:#fff"> Sort by the number of
+      <button id="populationButton">population</button>
+      <button id="carButton">car</button></p>
+  </div>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script>
+    const w = 1200;
+    const h = 2000;
+
+    const margin = {
+      top: 75,
+      left: 100,
+      bottom: 50,
+      right: 100
+    }
+    const width = w - margin.right - margin.left;
+    const height = h - margin.top - margin.bottom;
+
+    const svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + ", " + margin.top + ")");
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    d3.queue()
+      .defer(d3.csv, 'population.csv')
+      .defer(d3.csv, 'car.csv')
+      .await(init);
+
+    function init(err, population, car) {
+
+      const populationByCountry = d3.nest()
+        .key(function(d) {
+          return d["Country Name"].toUpperCase();
+        })
+        .rollup(function(d) {
+          let value = +d[0]["2015"]
+          return value;
+        })
+        .entries(population);
+
+      const populationMapped = d3.map(populationByCountry, function(d) {
+        return d.key
+      });
+
+      const carByCountry = d3.nest()
+        .key(function(d) {
+          return d.country.toUpperCase();
+        })
+        .rollup(function(d) {
+          // console.log(d[0]["2015"])
+          let value = d[0]["2015"]
+          value = value.split(',').join('');
+          value = +value * 1000;
+          return value;
+        })
+        .entries(car);
+
+      const finalData = new Array();
+      carByCountry.forEach(function(d) {
+        let population = populationMapped.get(d.key)
+        if (population == undefined) console.log("can't find " + d.key)
+        if (population != undefined) {
+          finalData.push({
+            country: d.key,
+            car: d.value,
+            population: population.value
+          })
+        }
+      })
+
+      // console.log(populationByCountry)
+      // console.log(finalData)
+
+      // drawInitial chart
+      drawChart(finalData)
+
+      // Sort and Visualize
+      document.getElementById("populationButton").addEventListener("click",
+        function() {
+          finalData.sort(function(a, b) {
+            return b.population - a.population
+          });
+          d3.selectAll(".groups").remove();
+          drawChart(finalData)
+        }
+      )
+
+      document.getElementById("carButton").addEventListener("click",
+        function() {
+          finalData.sort(function(a, b) {
+            return b.car - a.car
+          });
+          d3.selectAll(".groups").remove();
+          drawChart(finalData)
+        }
+      )
+    }
+
+    function drawChart(data) {
+
+
+
+      const padding = 100;
+      const popScale = d3.scaleLinear().domain([0, d3.max(data, function(d) {
+        return Math.cbrt(d.population)
+      })]).range([0, padding * 0.7]);
+
+      // Make a group for each country
+      const group = svg.selectAll("group")
+        .data(data)
+        .enter().append("g")
+        .attr("class", "groups")
+        .attr("transform", function(d, i) {
+          let x = ((i % (width / padding)) * padding);
+          let y = (Math.floor(i / (width / padding)) * padding);
+          return "translate(" + [x, y] + ")";
+        })
+        .on("mouseover", function(d, i) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+            .style("color", "#fff")
+          tooltip.html("<p><strong>" + d.country + "</p>")
+            .style("left", (d3.event.pageX-150) + "px")
+            .style("top", (d3.event.pageY) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+
+      // Half circle(below) for car
+      const carCircle = group.append("path")
+        .attr("class", "carCircle")
+        .attr("d", function(d, i, a) {
+          return half_circle(0, 0, popScale(Math.cbrt(d.car)))
+        })
+        .style("fill", "#7A9CC6")
+        .style("fill-opacity", 0)
+        .transition().delay(500).duration(1500)
+        .attr("transform", function(d) {
+          return "rotate(180)";
+        })
+        .style("fill-opacity", 0.75)
+
+      // Half circle(top) for population
+      const popCircle = group.append("path")
+        .attr("class", "popCircle")
+        .attr("d", function(d, i, a) {
+          return half_circle(0, 0, popScale(Math.cbrt(d.population)))
+        })
+        .style("fill", "#BDE4A7")
+        .style("fill-opacity", 0)
+        .transition().duration(1000)
+        .style("fill-opacity", 0.75)
+    }
+
+    function half_circle(cx, cy, r) {
+      return "M" + (cx + r) + "," + cy + " a" + r + "," + r + " 1 1,0 -" + (r * 2) + ",0";
+    }
+  </script>
+
+</body>
+
+</html>
