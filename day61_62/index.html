@@ -1,0 +1,259 @@
+<!-- dataset from http://pantheon.media.mit.edu/about/datasets -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Noto+Serif:400i,700i" rel="stylesheet">
+  <style>
+    body {
+      font-family: futura;
+      background: #141414;
+    }
+
+    svg {
+      margin-top: 7%;
+      background: #141414;
+    }
+
+    .nameGroup {
+      font-family: 'Noto Serif', serif;
+    }
+
+    .occupationTitle {
+      font-family: 'Noto Serif', serif;
+      font-weight: 700;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: fixed;
+      font-size: 1.5em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      font-family: 'Noto Serif', serif;
+      color: #FFCCB5;
+      /* background: #DA4167; */
+      width:1000px;
+      font-weight: 700;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+
+    button {
+      width: 150px;
+      height: 29px;
+      font-size: 0.75em;
+      font-family: futura;
+      font-weight: 100;
+      outline: none;
+      border: solid 1px #FFCCB5;
+      text-align: center;
+      background-color: #141414;
+      color: #FFCCB5;
+      font-family: 'Noto Serif', serif;
+    }
+
+    button:focus {
+      background-color: #DA4167;
+      color: #FFCCB5;
+    }
+  </style>
+</head>
+<body>
+  <div class="buttonGroup" style="position:fixed; margin-left:10px; margin-top:10px">
+    <button id="shareButton" style="margin-right:-4%">Share of female</button>
+    <button id="totalButton">Total number of female</button>
+  </div>
+  <svg id="mySVG" width="8200" height="11000"> </svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script src="//d3js.org/d3-scale-chromatic.v0.3.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    d3.queue()
+      .defer(d3.tsv, 'pantheon.tsv')
+      .await(init);
+
+    function init(err, rawData) {
+      // console.log(rawData);
+
+      const dataByOccupation = d3.nest()
+        .key(function(d) {
+          return d.occupation;
+        })
+        // .key(function(d) { return d.countryName;})
+        .key(function(d) {
+          return d.gender;
+        })
+        .entries(rawData);
+
+      // console.log(dataByOccupation);
+
+      const dataFilterd = dataByOccupation.filter(function(d) {
+        return d.values.length > 1
+      })
+
+      const finalData = dataFilterd.map(function(d) {
+        let totalNum, femaleNum, ratio, value;
+        if(d.values[0].key == "Female") {
+          totalNum = d.values[0].values.length + d.values[1].values.length;
+          femaleNum = d.values[0].values.length;
+          ratio = femaleNum / totalNum;
+          value = d.values[0].values;
+        } else if (d.values[1].key == "Female") {
+          totalNum = d.values[0].values.length + d.values[1].values.length;
+          femaleNum = d.values[1].values.length;
+          ratio = femaleNum / totalNum;
+          value = d.values[1].values;
+        }
+        return {
+          occupation: d.key,
+          total: totalNum,
+          female: femaleNum,
+          ratio: ratio,
+          value: value
+        }
+      })
+
+      const shareButton = document.getElementById("shareButton");
+      shareButton.addEventListener("click", shareShow);
+      const totalButton = document.getElementById("totalButton");
+      totalButton.addEventListener("click", totalShow);
+
+
+      function shareShow() {
+        finalData.sort(function(a, b) {
+          return b.ratio - a.ratio;
+        })
+        d3.select(".occupation").remove();
+        visOccupation(finalData);
+      }
+
+      function totalShow() {
+        finalData.sort(function(a, b) {
+          return b.female - a.female;
+        })
+        d3.select(".occupation").remove();
+        visOccupation(finalData);
+      }
+    }
+
+    function visOccupation(data) {
+
+      // console.log(data)
+
+      const radius = 50;
+
+      const innerScale = d3.scaleLinear().domain([d3.min(data, function(d) {
+        return d.female
+      }), d3.max(data, function(d) {
+        return d.female
+      })]).range([radius / 40, radius / 2])
+
+
+      const arc = d3.arc()
+        .innerRadius(function(d) {
+          return radius - innerScale(d.female)
+        })
+        .outerRadius(radius)
+        .startAngle(0)
+        .endAngle(function(d) {
+          return (d.ratio * 360) * (Math.PI / 180);
+        })
+
+      const occupationG = svg.append("g").attr("class", "occupation").attr("transform", "translate(75, 50)");
+
+      const group = occupationG.selectAll("g")
+        .data(data)
+        .enter().append("g")
+        .attr("class", function(d) {
+          return d.occupation.toLowerCase().split(" ").join("")
+        })
+        .attr("width", radius * 2)
+        .attr("height", radius * 2)
+        .attr("transform", function(d, i) {
+          return "translate(" + i * radius * 3 + ",0)"
+        })
+
+      const path = group.append("path")
+        .style("fill", "#FFCCB5")
+        .style("fill-opacity", 0)
+        .transition().duration(750)
+        .style("fill-opacity", 1)
+        .attr("d", arc)
+
+
+      const occupationTitle = group.append("text")
+        .attr("dy", ".35em")
+        .attr("class", "occupationTitle")
+        .attr("fill", "#FFCCB5")
+        .style("text-anchor", "middle")
+        .style("font-size", "0.75em")
+        .text(function(d) {
+          return d.occupation.toLowerCase();
+        })
+        .style("fill-opacity", 0)
+        .on("mouseover", function(d, i) {
+
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+
+          tooltip.html("<p><strong>" + "<span style='color:#DA4167;'>" +(d.ratio * 100).toFixed(1) +  "% (" + d.female + " in total) " + "</span>" + d.occupation.toLowerCase() + " are female." + "</p>")
+          .style("left", (100) + "px")
+          .style("top", (15) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+        .transition().duration(750)
+        .on("end", function(d) {
+          return showName(d.value, d.occupation)
+        })
+        .style("fill-opacity", 1)
+
+
+      function showName(data, groupName) {
+        data.sort(function(a,b) {
+          return b["TotalPageViews"] - a["TotalPageViews"]
+        })
+
+        const nameGroup = d3.select("." + groupName.toLowerCase().split(" ").join(""))
+          .append("g")
+          .attr("class", "nameGroup");
+
+        const name = nameGroup.selectAll("text")
+        .data(data)
+        .enter().append("a")
+        .attr("xlink:href", function(d) {return "https://en.wikipedia.org/wiki/" + d.name})
+        .attr("target", "blank")
+        .append("text")
+        .attr("fill", "#FFEAE0")
+        .attr("transform", "translate(0,75)")
+        .attr("x", 0)
+        .attr("y", function(d,i) {return i*20})
+        .style("text-anchor", "middle")
+        .style("font-size", "0.6em")
+        .text(function(d) {return d.name})
+
+        .style("fill-opacity", 0)
+        .transition().delay(100).duration(750)
+        .style("fill-opacity", 1)
+      }
+    }
+  </script>
+</body>
