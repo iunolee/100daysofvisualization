@@ -1,0 +1,295 @@
+<!-- dataset ftom https://www.gapminder.org/data/ -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Libre+Baskerville:400,700" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Libre Baskerville', serif;
+      background: #AD8247;
+    }
+
+    svg {
+      margin-top: 7%;
+      background: #AD8247;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: fixed;
+      font-size: 2em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      color: #fff;
+      font-weight: 400;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+
+    input,
+    select,
+    button {
+      width: 125px;
+      height: 20px;
+      font-size: 0.75em;
+      font-weight: 100;
+      outline: none;
+      border-radius: 5px;
+      border: solid 1px #fff;
+      text-align: center;
+      background: transparent;
+      color: #fff;
+      font-family: 'Libre Baskerville', serif;
+    }
+
+    button:active {
+      background-color: #C90E39;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="position:fixed;">
+    <p style="margin-top:2%; font-weight:700; margin-bottom:1%; font-size:0.75em;"> When is your birthday? Where are you from?</p>
+    <input id="birthDay" value="2017-01-01" type="date"></input>
+    <select id="country"></select>
+    <button id="button">Birth</button>
+    <button id="buttonToday">Today</button>
+  </div>
+  <svg id="mySVG" style="margin-top:-5%; margin-left:-2%" width="200000" height="200000"> </svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+    const width = +svg.attr("width");
+    const height = +svg.attr("height");
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    d3.queue()
+      .defer(d3.tsv, 'lifeExpectancy.tsv')
+      .await(init);
+
+    function init(err, rawData, demoData) {
+
+      // Arrange data
+      const dataByCountry = d3.nest()
+        .key(function(d) {
+          return d["Life expectancy"].toUpperCase();
+        })
+        .entries(rawData);
+
+      const finalData = dataByCountry.map(function(d) {
+        let country = d.key;
+        let val = d.values[0];
+        let years = Object.keys(val);
+        let values = [];
+        for (let i = 0; i < years.length; i++) {
+          let expentancy = Math.round(val[years[i]]) * 365;
+          let year = years[i]
+          values.push({
+            expectancy: expentancy,
+            year: year
+          })
+        }
+        values.sort(function(a, b) {
+          return a.expectancy - b.expectancy;
+        })
+        return {
+          country: country,
+          values: values
+        }
+      })
+
+      const mapCountry = d3.map(finalData, function(d) {
+        return d.country;
+      })
+
+      // Add options value(country) to select field
+      let countryField = d3.select("#country");
+
+      countryField.selectAll("option")
+        .data(finalData)
+        .enter().append("option")
+        .attr("value", function(d) {
+          return d.country;
+        })
+        .text(function(d) {
+          return d.country;
+        })
+
+      // Get expentancy data of your country and your birthday and execute visualization when button clicked
+      let yourBirthDay;
+      let yourExpectancy;
+      countryField.on('change', function() {
+        let selectedCountry = countryField.property('value')
+        yourExpectancy = mapCountry.get(selectedCountry).values;
+      })
+
+      const button = document.getElementById("button")
+      button.addEventListener("click", function() {
+        yourBirthDay = calDays();
+
+        //Remove all before showing something
+        d3.select(".circleGroup").remove();
+
+        window.scrollTo({left:0, top:0, behavior:"smooth"});
+
+        visualzie(yourBirthDay, yourExpectancy)
+      })
+
+    }
+
+    // calulation days since your birth
+    function calDays() {
+      let d = document.getElementById("birthDay").value;
+      let bday = new Date(d);
+      bday = bday.getTime();
+      let today = Date.now();
+      let period = today - bday;
+      let days = Math.floor(period / 1000 / 60 / 60 / 24);
+      return days;
+    }
+
+    function visualzie(birth, expectancy) {
+
+      // Remove duplicated expectancy value and filter ones bigger than total days
+      let newArray = [];
+      var lookupObject = {};
+      for (let i in expectancy) {
+        lookupObject[expectancy[i]["expectancy"]] = expectancy[i];
+      }
+      for (let i in lookupObject) {
+        newArray.push(lookupObject[i]);
+      }
+      newArray.splice(-1, 1)
+
+      let uniqExpectancy = newArray.filter(function(d) {
+        return d.expectancy <= birth
+      })
+
+      var birthData = d3.range(birth).map(function(d, i) {
+        return {
+          width: 3.5,
+          color: "#fff",
+          text: parseInt(i+1) + " days"
+        };
+      });
+
+      // Insert every birthday
+      for (let i in birthData) {
+        let day = parseInt(i) + 1;
+        if (i % 365 == 0) {
+          birthData.splice(i, 1, {
+            width: 5,
+            color: "#383838",
+            text: i/365 + " years old, " + day + " days"
+          })
+        }
+      }
+
+      // Insert today
+      birthData.splice(-1, 1, {
+        width: 5,
+        color: "#C90E39",
+        text: "Today, " + (birth)+ " days"
+      })
+
+      //Insert life expectancy
+      for (let i in uniqExpectancy) {
+        let num = uniqExpectancy[i].expectancy;
+        birthData.splice(num, 1, {
+          width: 5,
+          color: "#C90E39",
+          text: "Life expectancy in " + uniqExpectancy[i].year
+        })
+      }
+
+      console.log(birthData);
+
+      const circleGroup = svg.append("g")
+        .attr("class", "circleGroup");
+
+      const circle = circleGroup.selectAll("circle")
+        .data(birthData)
+        .enter().append("circle")
+        .attr("class", function(d, i) {
+          return "circle_" + (i + 1)
+        })
+        .attr("fill", "none")
+        .attr("cx", width / 2)
+        .attr("cy", height / 2)
+        .attr("r", function(d, i) {
+          return 10 + (i * 10)
+        })
+        .attr("stroke", function(d, i) {
+          return d.color
+        })
+        .attr("stroke-width", function(d, i) {
+          return d.width;
+        })
+        .on("mouseover", function(d, i) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+            .style("color", d.color)
+          tooltip.html("<p><strong>" + d.text + "</p>")
+            .style("left", (d3.event.pageX - pageXOffset + 20) + "px")
+            .style("top", (d3.event.pageY - pageYOffset - 10) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+        // .attr("stroke-opacity", 0)
+        // .transition().delay(function(d, i) {
+        // return i * 5
+        // }).duration(5000)
+        .attr("stroke-opacity", 0.5)
+
+
+      // coloring for birthday
+      const birthElem = d3.select(".circle_1")
+        .attr("stroke", "#C90E39")
+        .attr("fill", "#C90E39")
+        .attr("fill-opacity", 0)
+        .transition().duration(2000)
+        .attr("fill-opacity", 1)
+        .attr("stroke-opacity", 1)
+
+      // text for birthday
+      circleGroup.append("text")
+        .attr("x", width / 2 + 70)
+        .attr("y", height / 2 + 5)
+        .attr("fill", "#C90E39")
+        .style("font-size", "1em")
+        .style("text-anchor", "middle")
+        .style("font-weight", "700")
+        .text("Your first day")
+
+      // translate the entire circle group to left/top edge to be visible at first look
+      let birthElemPos = birthElem.node().getBoundingClientRect();
+      circleGroup.attr("transform", "translate(" + [(-1 * birthElemPos.left * 0.997) - pageXOffset, (-1 * birthElemPos.top * 0.997) - pageYOffset] + ")")
+
+      const lastElem = d3.select(".circle_"+(birth-1).toString())
+
+      // Scroll to today
+      const buttonToday = document.getElementById("buttonToday")
+      buttonToday.addEventListener("click", function() {
+        let lastElemPos = lastElem.node().getBoundingClientRect();
+
+        window.scrollBy({left:lastElemPos.width/2/Math.sqrt(2)-pageXOffset, top:lastElemPos.height/2/Math.sqrt(2)-pageYOffset, behavior:'smooth'});
+      })
+    }
+  </script>
+</body>

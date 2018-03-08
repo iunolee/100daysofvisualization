@@ -99,7 +99,12 @@
         })
         .entries(rawData);
 
-      // console.log(dataByOccupation);
+      //   const dataByGender = d3.nest()
+      //     // .key(function(d) { return d.countryName;})
+      //     .key(function(d) {
+      //       return d.gender;
+      //     })
+      //     .entries(rawData);
 
       const dataFilterd = dataByOccupation.filter(function(d) {
         return d.values.length > 1
