@@ -1,0 +1,235 @@
+<!-- dataset ftom https://rit-public.github.io/HappyDB/ -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Merriweather:300,700" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Merriweather', serif;
+      background: #fff;
+    }
+
+    input {
+      width: 190px;
+      height: 20px;
+      font-size: 0.75em;
+      font-weight: 100;
+      outline: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      border-bottom: solid 5px gray;
+      padding: 10px;
+      text-align: center;
+      background: transparent;
+      color: gray;
+      font-family: 'Merriweather', serif;
+    }
+
+    .grid-container {
+      display: grid;
+      grid-template-columns: auto auto auto;
+      background-color: transparent;
+      padding: 15px;
+    }
+
+    .grid-item {
+      width:275px;
+      background: transparent;
+      border: none;
+      padding: 25px;
+      font-size: 0.65em;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 3.5em;
+      font-weight:700;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="margin-top:5%; margin-left:40%;">
+    <input id="age" placeholder="How old are you?"></input>
+    <div id="category" style="font-size:1em; color:gray; font-weight:700; margin-top:5%; margin-left:0%;">It's about happy moments.</div>
+
+  </div>
+  <div class="grid-container" style="margin-top:5%;">
+    <div class="grid-item" style="color:#3156CE;">
+      <p>Male & Single</p>
+      <h1 id="msCol">?</h1>
+    </div>
+    <div class="grid-item" style="color:#798DCE;">
+      <p>Male & Married</p>
+      <h1 id="wsCol">?</h1></div>
+    <div class="grid-item" style="color:#A5AECE">
+      <p>Male & Married & Kid</p>
+      <h1 id="mmCol">?</h1>
+    </div>
+    <div class="grid-item" style="color:#EA1563">
+      <p>Female & Single</p>
+      <h1 id="wmCol">?</h1></div>
+    <div class="grid-item" style="color:#EA9FBB">
+      <p>Female & Married</p>
+      <h1 id="mmkCol">?</h1></div>
+    <div class="grid-item" style="color:#EAC9D5">
+      <p>Female & Married & Kid</p>
+      <h1 id="wmkCol">?</h1></div>
+  </div>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    d3.queue()
+      .defer(d3.csv, 'cleaned_hm.csv')
+      .defer(d3.csv, 'demographic.csv')
+      .await(init);
+
+    function init(err, happyData, demoData) {
+      // console.log(happyData);
+      // console.log(demoData);
+
+      const demoMapped = d3.map(demoData, function(d) {
+        return d.wid
+      })
+
+      const newArray = new Array();
+      happyData.forEach(function(d) {
+        let id = d.wid;
+        let hm = d["cleaned_hm"];
+        let category = d["predicted_category"];
+        let demo = demoMapped.get(id)
+        newArray.push({
+          hm: hm,
+          category: category,
+          demo: demo
+        })
+      })
+
+      // console.log(newArray);
+
+      document.getElementById("age")
+        .addEventListener("keyup", function(event) {
+          event.preventDefault();
+          if (event.keyCode === 13) {
+            filteringData();
+          }
+        });
+
+
+      function filteringData() {
+        let inputAge = document.getElementById("age").value;
+
+        let category = ["affection", "achievement", "enjoy_the_moment", "bonding", "leisure", "nature", "exercise"];
+        let categoryPicked = category[Math.floor(Math.random() * category.length)]
+        categoryPicked = categoryPicked.split("_").join(" ")
+
+        console.log(categoryPicked)
+
+        // categorize data - Men/Women, Single/Married, Kids/No kids
+        let msData = newArray.filter(function(d) {
+          return d.demo.gender == "m" && d.demo.marital == "single" && d.demo.parenthood == "n" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+        let wsData = newArray.filter(function(d) {
+          return d.demo.gender == "f" && d.demo.marital == "single" && d.demo.parenthood == "n" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+        let mmData = newArray.filter(function(d) {
+          return d.demo.gender == "m" && d.demo.marital == "married" && d.demo.parenthood == "n" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+        let wmData = newArray.filter(function(d) {
+          return d.demo.gender == "f" && d.demo.marital == "married" && d.demo.parenthood == "n" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+        let mmkData = newArray.filter(function(d) {
+          return d.demo.gender == "m" && d.demo.marital == "married" && d.demo.parenthood == "y" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+        let wmkData = newArray.filter(function(d) {
+          return d.demo.gender == "f" && d.demo.marital == "married" && d.demo.parenthood == "y" && d.category == categoryPicked && d.demo.age == inputAge.toString();
+        })
+
+        let msPhrase, wsPhrase, mmPhrase, wmPhrase, mmkPhrase, wmkPhrase;
+
+        if (msData.length > 0) {
+          msPhrase = msData[Math.floor(Math.random() * msData.length)].hm;
+        } else {
+          msPhrase = "Ooops. No happy moment about it."
+        }
+
+        if (wsData.length > 0) {
+          wsPhrase = wsData[Math.floor(Math.random() * wsData.length)].hm;
+        } else {
+          wsPhrase = "Ooops. No happy moment about it."
+        }
+
+        if (mmData.length > 0) {
+          mmPhrase = mmData[Math.floor(Math.random() * mmData.length)].hm;
+        } else {
+          mmPhrase = "Ooops. No happy moment about it."
+        }
+
+        if (wmData.length > 0) {
+          wmPhrase = wmData[Math.floor(Math.random() * wmData.length)].hm;
+        } else {
+          wmPhrase = "Ooops. No happy moment about it."
+        }
+
+        if (mmkData.length > 0) {
+          mmkPhrase = mmkData[Math.floor(Math.random() * mmkData.length)].hm;
+        } else {
+          mmkPhrase = "Ooops. No happy moment about it."
+        }
+
+        if (wmkData.length > 0) {
+          wmkPhrase = wmkData[Math.floor(Math.random() * wmkData.length)].hm;
+        } else {
+          wmkPhrase = "Ooops. No happy moment about it."
+        }
+
+        console.log(msPhrase);
+        console.log(wsPhrase);
+        console.log(mmPhrase);
+        console.log(wmPhrase);
+        console.log(mmkPhrase);
+        console.log(wmkPhrase);
+
+        let categoryCol = d3.select("#category").style("opacity", 0)
+          .html("It's about " + "<strong>" + categoryPicked + "</strong>")
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+
+        let msCol = d3.select("#msCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(msPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+
+        let wsCol = d3.select("#wsCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(wsPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+        let mmCol = d3.select("#mmCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(mmPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+        let wmCol = d3.select("#wmCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(wmPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+        let mmkCol = d3.select("#mmkCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(mmkPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+
+        let wmkCol = d3.select("#wmkCol").style("font-size", "1.25em").style("opacity", 0)
+          .text(wmkPhrase)
+          .transition()
+          .duration(2500).style("opacity", 1);
+      }
+    }
+  </script>
+</body>
