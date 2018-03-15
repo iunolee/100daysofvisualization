@@ -1,0 +1,288 @@
+<!-- dataset ftom https://catalog.data.gov/dataset/most-popular-baby-names-by-sex-and-mothers-ethnic-group-new-york-city-8c742 -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      font-family: helvetica;
+      background: #fff;
+      font-size: 0.5em;
+    }
+
+    svg {
+      background: #fff;
+    }
+
+    button {
+      font-size: 0.75em;
+      width: 40px;
+      height: 20px;
+      font-family: helvetica;
+      font-weight: 100;
+      outline: none;
+      border-radius: 5%;
+      border-none;
+      text-align: center;
+      background-color: #fff;
+      color: #141414;
+    }
+
+    button.foo {
+      background-color: #141414;
+      color: #fff;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: fixed;
+      font-size: 3em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      color: #141414;
+      font-weight: 700;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="margin-left:35%; margin-top:5%;">
+    <button id="buttonBoy">Boy</button>
+    <button id="buttonGirl">Girl</button>
+    <button id="button2011">2011</button>
+    <button id="button2012">2012</button>
+    <button id="button2013">2013</button>
+    <button id="button2014">2014</button>
+  </div>
+  <svg width="1000" height="700"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+
+    const margin = {
+      top: 20,
+      left: 35,
+      bottom: 20,
+      right: 50
+    }
+
+    const width = svg.attr("width") - margin.left - margin.right;
+    const height = svg.attr("height") - margin.top - margin.bottom;
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    const g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.queue()
+      .defer(d3.csv, 'Most_Popular_Baby_Names_by_Sex_and_Mother_s_Ethnic_Group__New_York_City.csv')
+      .await(init);
+
+    function init(err, rawData) {
+
+      rawData.sort(function(a, b) {
+        return (+b.Rank) - (+a.Rank);
+      })
+      // console.log(rawData);
+
+      // clean data
+      const nestedData = d3.nest()
+        .key(function(d) {
+          return d["Year of Birth"]
+        })
+        .key(function(d) {
+          return d.Ethnicity
+        })
+        .entries(rawData);
+
+      let tempData = [];
+      for (i in nestedData) {
+        let yearlyData = nestedData[i].values;
+        for (j in yearlyData) {
+          let ethnicData = yearlyData[j].values;
+          let lookupObject = {};
+          for (let k in ethnicData) {
+            lookupObject[ethnicData[k]["Child's First Name"]] = ethnicData[k];
+          }
+          for (let l in lookupObject) {
+            tempData.push(lookupObject[l]);
+          }
+        }
+      }
+
+      const finalNestedData = d3.nest()
+        .key(function(d) {
+          return d.Gender
+        })
+        .key(function(d) {
+          return d["Year of Birth"]
+        })
+        .entries(tempData);
+
+      // button functions
+      $("button").click(function() {
+        $(this).toggleClass('foo');
+
+        if ($("#buttonBoy").hasClass('foo') && $("#button2011").hasClass('foo')) {
+          visualize(finalNestedData[0].values[3].values)
+        } else if ($("#buttonGirl").hasClass('foo') && $("#button2011").hasClass('foo')) {
+          visualize(finalNestedData[1].values[3].values)
+        } else if ($("#buttonBoy").hasClass('foo') && $("#button2012").hasClass('foo')) {
+          visualize(finalNestedData[0].values[2].values)
+        } else if ($("#buttonGirl").hasClass('foo') && $("#button2012").hasClass('foo')) {
+          visualize(finalNestedData[1].values[2].values)
+        } else if ($("#buttonBoy").hasClass('foo') && $("#button2013").hasClass('foo')) {
+          visualize(finalNestedData[0].values[1].values)
+        } else if ($("#buttonGirl").hasClass('foo') && $("#button2013").hasClass('foo')) {
+          visualize(finalNestedData[1].values[1].values)
+        } else if ($("#buttonBoy").hasClass('foo') && $("#button2014").hasClass('foo')) {
+          visualize(finalNestedData[0].values[0].values)
+        } else if ($("#buttonGirl").hasClass('foo') && $("#button2014").hasClass('foo')) {
+          visualize(finalNestedData[1].values[0].values)
+        }
+      });
+
+    }
+
+    function visualize(data) {
+      // clean data again
+      const mappedData = data.map(function(d) {
+        let name = d["Child's First Name"].toUpperCase();
+        let count = +d.Count;
+        let yPos;
+        if (d.Ethnicity == "WHITE NON HISPANIC" || d.Ethnicity == "WHITE NON HISP") {
+          yPos = height * 4 / 5;
+        } else if (d.Ethnicity == "HISPANIC") {
+          yPos = height * 3 / 5;
+        } else if (d.Ethnicity == "BLACK NON HISPANIC" || d.Ethnicity == "BLACK NON HISP") {
+          yPos = height * 2 / 5;
+        } else if (d.Ethnicity == "ASIAN AND PACIFIC ISLANDER" || d.Ethnicity == "ASIAN AND PACI") {
+          yPos = height * 1 / 5;
+        }
+        return {
+          name: name,
+          count: count,
+          yPos: yPos
+        }
+      })
+
+      // console.log(mappedData)
+
+      const x = d3.scaleLog()
+        .domain(d3.extent(mappedData, function(d) {
+          return d.count;
+        }))
+        .range([margin.left, width - margin.right]);
+
+
+      // Title for each ethiic group
+      d3.selectAll(".title").remove();
+      const title = svg.append("g").attr("class", "title")
+        .selectAll("svg")
+        .data(["Asian", "Black", "Hisapnic", "White"])
+        .enter().append("text")
+        .attr("font-size", "1.25em")
+        .attr("fill", "#141414")
+        .attr("font-weight", "900")
+        .attr("x", 10)
+        .text(function(d) {
+          return d;
+        })
+        .style("fill-opacity", 0)
+        .transition().duration(2000)
+        .attr("y", function(d, i) {
+          return 150 + i * height / 5
+        })
+        .style("fill-opacity", 1)
+
+
+      // Set force for each name
+      const simulation = d3.forceSimulation(mappedData)
+        .force("x", d3.forceX(function(d) {
+          return x(d.count);
+        }).strength(1))
+        .force("y", d3.forceY(function(d) {
+          return d.yPos
+        }).strength(0.075))
+        .force("collide", d3.forceCollide(5))
+        .stop();
+
+      for (let i = 0; i < 120; ++i) simulation.tick();
+
+
+      // Enter, update, exit each name
+      const text = g.selectAll("text")
+        .data(mappedData, function(d) {
+          return d.name + "_" + d.yPos.toString()
+        });
+
+      text.exit()
+        .attr("class", "exit")
+        .transition().duration(2000)
+        .attr("y", 1500)
+        .style("fill-opacity", 1e-6)
+        .remove();
+
+      text.attr("class", "update")
+        .attr("y", function(d) {
+          if (d != undefined)
+            return d.y;
+        })
+        .style("fill-opacity", 0.3)
+        .transition().duration(2000)
+        .attr("x", function(d) {
+          if (d != undefined)
+            return d.x;
+        })
+
+      text.enter().append("text")
+        .attr("class", "enter")
+        .attr("font-size", "0.75em")
+        .attr("y", -1000)
+        .style("fill-opacity", 1e-6)
+        .text(function(d) {
+          return d.name;
+        })
+        .attr("x", 0)
+        .attr("y", -1000)
+        .transition().duration(2000)
+        .attr("x", function(d) {
+          if (d != undefined)
+            return d.x;
+        })
+        .attr("y", function(d) {
+          if (d != undefined)
+            return d.y;
+        })
+        .style("fill-opacity", 0.3)
+
+
+      // Tooltip for each name
+      d3.selectAll("text").on("mouseover", function(d, i) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 1)
+          tooltip.html("<p><strong>" + this.innerHTML.toUpperCase() + "</p>")
+            .style("left", (d3.event.pageX - pageXOffset + 10) + "px")
+            .style("top", (d3.event.pageY - pageYOffset - 10) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+    }
+  </script>
+</body>
