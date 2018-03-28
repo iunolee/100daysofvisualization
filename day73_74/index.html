@@ -1,0 +1,202 @@
+<!-- http://maptime.io/anatomy-of-a-web-map/#58 -->
+<!-- https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <link href="https://fonts.googleapis.com/css?family=Heebo:100,300,700,900" rel="stylesheet">
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.1/dist/leaflet.css" integrity="sha512-Rksm5RenBEKSKFjgI3a41vrjkw4EVPlJ3+OiI65vTjIdo9brlAacEuKOiQ5OFh7cOI1bkDwLqdLw3Zg0cRJAAQ==" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.3.1/dist/leaflet.js" integrity="sha512-/Nsx9X4HebavoBvEBuyp3I7od5tA0UzAxs+j83KgC8PU0kgB4XiK4Lfe4y4cgBtaRJQEIFCW+oC506aPT2L1zw==" crossorigin=""></script>
+  <style>
+    body {
+      background: #495867;
+      margin: 0;
+      padding: 0;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: absolute;
+      font-size: 1em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      font-family: 'Heebo', sans-serif;
+      color: #F6F0ED;
+      background: #495867;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+
+    button {
+      z-index: 1;
+      position: fixed;
+      top: 30%;
+      border: none;
+      background: #495867;
+      outline: none;
+      color: #F6F0ED;
+      width: 100%;
+      height: 5%;
+      font-size: 1em;
+      font-family: 'Heebo', sans-serif;
+      font-weight: 900;
+    }
+
+    button:hover {
+      color: #495867;
+      background: #F6F0ED;
+    }
+
+    button:active {
+      color: #F6F0ED;
+    }
+
+    #mapid {
+      z-index: 1;
+      position: fixed;
+      top: 0px;
+      left: 0px;
+      width: 100%;
+      height: 30%;
+    }
+
+    .grid-container {
+      z-index: -1;
+      position: absolute;
+      background: #495867;
+      top: 35%;
+      height: 70%;
+      width: 100%;
+      left: 0;
+      display: inline-grid;
+      grid-gap: 1px 1px;
+      grid-template-columns: auto auto auto auto auto auto auto auto auto auto;
+    }
+
+    .grid-item {
+      background-color: #F5E0B7;
+      border: none
+    }
+  </style>
+</head>
+
+<body>
+  <button id="button">FIND YOUR HOMES IN THE MAP ABOVE AND CLICK EACH POINT. IF DONE, CLICK HEAR TO GET YOUR PIECES OF HOMES.</button>
+  <div id="mapid"></div>
+  <div class="grid-container" id="tiles"></div>
+  <script>
+    var urlList = [];
+    var count = 0;
+
+    // Basic map setting
+    var mymap = L.map('mapid').setView([40.734, -73.991], 10);
+    var OpenStreetMap_HOT = L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(mymap);
+    var popup = L.popup();
+
+    //When a point on map is clicked, get the coordinate
+    function onMapClick(e) {
+      var tileZoom = e.sourceTarget._zoom;
+      var tileX = long2tile(e.latlng.lng, e.sourceTarget._zoom);
+      var tileY = lat2tile(e.latlng.lat, e.sourceTarget._zoom);
+
+      getImage(tileZoom, tileX, tileY)
+
+      var marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(mymap);
+      marker.bindPopup("You clicked this as one of your homes.").openPopup();
+
+    }
+
+    mymap.on('click', onMapClick);
+
+    //Calculate coordinate into tile number (x,y)
+    function long2tile(lon, zoom) {
+      return (Math.floor((lon + 180) / 360 * Math.pow(2, zoom)));
+    }
+
+    function lat2tile(lat, zoom) {
+      return (Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)));
+    }
+
+    // Get tile images around(+-2) selected point and push them into an array
+    function getImage(z, x, y) {
+
+      count++;
+
+      for (i = -2; i < 3; i++) {
+        for (j = -2; j < 3; j++) {
+          var url = "http://basemaps.cartocdn.com/light_nolabels/" + z + "/" + (x + i) + "/" + (y + j) + ".png";
+          // Different style of tiles
+          // var url = "http://basemaps.cartocdn.com/light_all/" + z + "/" + (x + i) + "/" + (y + j) + ".png";
+          // var url = "    http://tile.openstreetmap.org/" + z + "/" + (x + i) + "/" + (y + j) + ".png";
+          // var url = "   http://a.tile.stamen.com/toner/" + z + "/" + (x + i) + "/" + (y + j) + ".png";
+          urlList.push({
+            url: url,
+            count: count
+          });
+        }
+      }
+    }
+
+    var button = document.getElementById("button")
+    button.addEventListener("click", drawPieces);
+
+
+    //Insert images on below div
+    function drawPieces() {
+
+      // console.log(urlList)
+      d3.shuffle(urlList)
+      d3.selectAll(".grid-item").remove();
+
+      var width = window.innerWidth;
+      var colLength = Math.floor(Math.sqrt(urlList.length));
+      var colSize = width / colLength;
+
+      var tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
+
+      var tileDiv = d3.select("#tiles")
+      tileDiv.style("grid-template-columns", "auto ".repeat(colLength))
+
+      tileDiv.selectAll("img")
+        .data(urlList)
+        .enter().append("img")
+        .attr("class", "grid-item")
+        .attr("width", colSize)
+        .attr("height", colSize)
+        .attr("src", function(d) {
+          return d.url;
+        })
+        .on("mouseover", function(d, i) {
+          tooltip.transition()
+            .duration(500)
+            .style("opacity", 1)
+          tooltip.html("<p><strong>" + "THIS IS YOUR <span style='color:#9DD8E0'> NO." + +d.count.toString() + "</span> HOME" + "</p>")
+            .style("left", (d3.event.pageX) + "px")
+            .style("top", (d3.event.pageY) + "px")
+        })
+        .on("mouseout", function(d) {
+          tooltip.transition()
+            .duration(250)
+            .style("opacity", 0);
+        })
+        .style("opacity", 0)
+        .transition().delay(function(d, i) {
+          return i * 25
+        }).duration(1500)
+        .style("opacity", 1)
+
+      urlList = [];
+      count = 0;
+    }
+  </script>
+</body>

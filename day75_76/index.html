@@ -1,0 +1,284 @@
+<!-- Data from https://www.kaggle.com/rounakbanik/ted-talks/data -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Amiri|Heebo:100|Montserrat:100" rel="stylesheet">
+  <style>
+    body {
+      background: #141414;
+    }
+
+    svg {
+      background: #141414;
+    }
+
+    .link {
+      fill: none;
+      stroke: #D31726;
+      stroke-width: 0.15px;
+    }
+  </style>
+</head>
+
+<body>
+  <svg width="3000" height="5000"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+
+    const margin = {
+      top: 5,
+      left: 75,
+      bottom: 5,
+      right: 5
+    }
+    const width = svg.attr("width") - margin.left - margin.right;
+    const height = svg.attr("height") - margin.top - margin.bottom;
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    const g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.queue()
+      // .defer(d3.csv, 'ted_main.csv')
+      .defer(d3.csv, 'transcripts.csv')
+      .await(init);
+
+    function init(err, ted, transcript) {
+      // console.log(ted)
+      // console.log(transcript)
+
+      const theWord = "idea";
+      const beforeWordsList = [];
+
+      const sentenceList = [];
+      transcript.forEach(function(d) {
+        let sentence = d.transcript.split(/[\\.!\?]/);
+        for (let s in sentence) {
+          if (sentence[s].indexOf(theWord) != -1)
+            sentenceList.push(sentence[s])
+        }
+      });
+
+      sentenceList.forEach(function(d) {
+        if (d.indexOf(theWord) != -1) {
+          let words = d.split(' ');
+          let numberIndex = words.findIndex((word) => word == theWord);
+          let beforeWord = words[numberIndex - 1];
+          if (beforeWord != undefined && beforeWord != "no" && beforeWord != "No" && beforeWord != "an" && beforeWord != "this" && beforeWord != "The" && beforeWord != "the" && beforeWord != "that" && beforeWord != "This" && beforeWord != "any" &&
+            beforeWord != "of" && beforeWord != "" &&
+            beforeWord != "or" && beforeWord != "and" && beforeWord != "for" && beforeWord != "where" && beforeWord != "huh?The" && beforeWord != "to" && beforeWord != "each" && beforeWord != '"us"' && beforeWord != "why" && beforeWord != "into" &&
+            beforeWord != "But" && beforeWord != '"What' &&
+            beforeWord != '"That' && beforeWord != 'power"' && beforeWord != '(Laughter)Whose' && beforeWord != 'versus' && beforeWord != 'One:' && beforeWord != 'one' && beforeWord != 'One' && beforeWord != 'his' && beforeWord != 'her' &&
+            beforeWord != 'my' && beforeWord != 'your' && beforeWord != 'My' &&
+            beforeWord != 'our' && beforeWord != 'Our' && beforeWord != 'That' && beforeWord != 'about' && beforeWord != 'very' && beforeWord != 'Any' && beforeWord != 'An' && beforeWord != 'Now' && beforeWord != "else's" && beforeWord !=
+            '(Laughter)The' && beforeWord != 'its' && beforeWord != '(Laughter)This' &&
+            beforeWord != 'his' && beforeWord != 'Their')
+            beforeWordsList.push(beforeWord)
+        }
+      })
+
+      // console.log(beforeWordsList)
+
+      const occurrencesBefore = {};
+
+      beforeWordsList.forEach(function(d) {
+        occurrencesBefore[d] = occurrencesBefore[d] ? occurrencesBefore[d] + 1 : 1;
+      })
+
+      const finalWordList = [];
+
+      let beforeKeys = Object.keys(occurrencesBefore);
+      beforeKeys.forEach(function(d) {
+        let word = d + " idea";
+        const finalSentenceList = [];
+        for (s in sentenceList) {
+          if (sentenceList[s].indexOf(word) != -1) finalSentenceList.push({
+            text: sentenceList[s]
+          })
+        }
+        // finalWordList.push({word:d, sentence:finalSentenceList, count:occurrencesBefore[d]})
+        finalWordList.push({
+          text: word,
+          children: finalSentenceList,
+          count: finalSentenceList.length
+        })
+      })
+
+      finalWordList.sort(function(a, b) {
+        return b.count - a.count;
+      })
+
+      const finalData = {
+        text: "idea",
+        children: finalWordList
+      };
+
+      // console.log(finalData)
+
+      let i = 0;
+      const treemap = d3.tree().size([height, width])
+      const root = d3.hierarchy(finalData, function(d) {
+        return d.children
+      })
+      root.x0 = height / 2;
+      root.y0 = 0;
+      root.children.forEach(collapse);
+
+      // console.log(root)
+      update(root)
+
+      function collapse(d) {
+        if (d.children) {
+          d._children = d.children
+          d._children.forEach(collapse)
+          d.children = null
+        }
+      }
+
+      function update(source) {
+
+        const treeData = treemap(root);
+        const nodes = treeData.descendants();
+        const links = treeData.descendants().slice(1);
+
+        // Node section
+        nodes.forEach(function(d) {
+          d.children || d._children ? d.y = d.depth * 400 : d.y = d.depth * 240;
+
+        });
+
+        const node = g.selectAll('g.node')
+          .data(nodes, function(d) {
+            return d.id || (d.id = ++i);
+          });
+
+        const nodeEnter = node.enter().append('g')
+          .attr('class', 'node')
+          .attr("transform", function(d) {
+            return "translate(" + source.y0 + "," + source.x0 + ")";
+          })
+          .on('click', click);
+
+        nodeEnter.append('circle')
+          .attr('class', 'node')
+          .attr('r', 1e-6)
+          .style("fill", function(d) {
+            return d._children ? "#D31726" : "#141414";
+          })
+          .style("stroke", "#D31726")
+
+        nodeEnter.append('text')
+          .attr("dy", ".2em")
+          .attr("x", function(d) {
+            return d.children || d._children ? -13 : 13;
+          })
+          .attr("text-anchor", function(d) {
+            return d.children || d._children ? "end" : "start";
+          })
+          .attr("font-family", "Heebo")
+          .attr("font-size", ".75em")
+          .attr("fill", "#fff")
+          .text(function(d) {
+            return d.data.text;
+          });
+
+        const nodeUpdate = nodeEnter.merge(node);
+
+        nodeUpdate.transition()
+          .duration(750)
+          .attr("transform", function(d) {
+            return "translate(" + d.y + "," + d.x + ")";
+          });
+
+        nodeUpdate.select('circle.node')
+          .attr('r', 5)
+          .style("fill", function(d) {
+            return d._children ? "#D31726" : "#141414";
+          })
+          .attr('cursor', 'pointer');
+
+        const nodeExit = node.exit().transition()
+          .duration(750)
+          .attr("transform", function(d) {
+            return "translate(" + source.y + "," + source.x + ")";
+          })
+          .remove();
+
+        nodeExit.select('circle')
+          .attr('r', 1e-6);
+
+        nodeExit.select('text')
+          .style('fill-opacity', 1e-6);
+
+
+        // Link Section
+        const link = g.selectAll('path.link')
+          .data(links, function(d) {
+            return d.id;
+          });
+
+        const linkEnter = link.enter().insert('path', "g")
+          .attr("class", "link")
+          .attr('d', function(d) {
+            let o = {
+              x: source.x0,
+              y: source.y0
+            }
+            return diagonal(o, o)
+          });
+
+        const linkUpdate = linkEnter.merge(link);
+
+        linkUpdate.transition()
+          .duration(750)
+          .attr('d', function(d) {
+            return diagonal(d, d.parent)
+          });
+
+        const linkExit = link.exit().transition()
+          .duration(750)
+          .attr('d', function(d) {
+            let o = {
+              x: source.x,
+              y: source.y
+            }
+            return diagonal(o, o)
+          })
+          .remove();
+
+        nodes.forEach(function(d) {
+          d.x0 = d.x;
+          d.y0 = d.y;
+        });
+      }
+
+      function diagonal(s, d) {
+
+        path = `M ${s.y} ${s.x}
+          C ${(s.y + d.y) / 2} ${s.x},
+            ${(s.y + d.y) / 2} ${d.x},
+            ${d.y} ${d.x}`
+
+        return path
+      }
+
+      function click(d) {
+        if (d.children) {
+          d._children = d.children;
+          d.children = null;
+        } else {
+          d.children = d._children;
+          d._children = null;
+        }
+        update(d);
+      }
+    }
+  </script>
+</body>

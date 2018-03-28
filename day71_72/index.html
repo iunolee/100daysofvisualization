@@ -1,0 +1,201 @@
+<!-- dataset ftom https://irma.nps.gov/Stats/SSRSReports/National%20Reports/Annual%20Visitation%20By%20Park%20(1979%20-%20Last%20Calendar%20Year) -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      background: #303033;
+    }
+
+    svg {
+      background: #303033;
+    }
+
+    .tooltip {
+      font-family: futura;
+      text-align: left;
+      position: fixed;
+      font-size: 0.85em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      color: #141414;
+      /* font-weight: 700; */
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <svg width="1200" height="700"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+
+    const margin = {
+      top: 5,
+      left: 300,
+      bottom: 5,
+      right: 5
+    }
+    const width = svg.attr("width") - margin.left - margin.right;
+    const height = svg.attr("height") - margin.top - margin.bottom;
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    const g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.queue()
+      .defer(d3.csv, 'park.csv')
+      .await(init);
+
+    function init(err, rawData) {
+
+      const dataParsed = rawData.map(function(d) {
+        let data2008 = d["2008"].split(",").join("");
+        let data2017 = d["2017"].split(",").join("");
+        let diff = (+data2017) - (+data2008);
+
+        return {
+          name: "Park/" + d["Park Name"],
+          totalNum2017: +data2017,
+          diff: diff
+        }
+      })
+
+      let finalData = [];
+      finalData.push({
+        name: "Park",
+        totalNum2017: 0
+      })
+      dataParsed.forEach(function(d) {
+        finalData.push(d)
+      })
+
+      visualize(finalData);
+    }
+
+    function visualize(data) {
+
+      const diffMin = d3.min(data, function(d) {
+        return d.diff
+      });
+      const diffMax = d3.max(data, function(d) {
+        return d.diff
+      });
+
+      const color = d3.scaleLinear().domain([diffMin, 0, diffMax]).range(["#8C6144", "#EDDE7D", "#1BE27B"]);
+
+      const root = d3.stratify()
+        .id(function(d) {
+          return d.name;
+        })
+        .parentId(function(d) {
+          return d.name.substring(0, d.name.lastIndexOf("/"));
+        })
+        (data)
+
+      root.sum(function(d) {
+          return d.totalNum2017;
+        })
+        .sort(function(a, b) {
+          return b.height - a.height || b.value - a.value;
+        })
+
+      const treemap = d3.treemap()
+        .size([width, height])
+        .round(true)
+        .padding(1)
+
+      treemap(root);
+
+      const cell = g.selectAll("rect")
+        .data(root.leaves())
+
+      cell.attr("class", "update");
+
+      cell.enter().append("rect")
+        .attr("class", "enter")
+        .merge(cell)
+        .attr("id", function(d) {
+          return "rect-" + d.id;
+        })
+        .style("fill-opacity", 0)
+        .style("fill", function(d) {
+          return color(d.data.diff);
+        })
+        .attr("x", function(d) {
+          return d.x0;
+        })
+        .attr("y", function(d) {
+          return d.y0;
+        })
+        .on("mousedown", function(d, i) {
+
+
+          let name = d.data.name.split("/");
+          let colors = color(d.data.diff);
+          let format = d3.format(",d");
+
+          tooltip.transition()
+            .duration(750)
+            .style("opacity", 1)
+            .style("color", colors)
+          tooltip.html("<p><strong>" + name[1] + "</strong></br>" + "<span style='font-size:0.6em'>" + "Total visitors in 2017 is " + format(d.value) + "</br>The difference from 10 years ago is <span>" + format(d.data.diff) + "</p>")
+            .style("left", "47px")
+            .style("top", (height / 2 - 5)+ "px")
+            .transition()
+            .delay(2000)
+            .style("opacity", 0)
+
+
+          let selected = d3.select(this)
+            // .style("pointer-events", "none")
+            .raise()
+            .transition()
+            .duration(750)
+            .attr("x", -270)
+            .attr("y", height / 2 - 110)
+            .attr("width", 220)
+            .attr("height", 220)
+            .style("fill", "none")
+            .style("stroke", colors)
+            .style("stroke-width", "5")
+            .transition()
+            .delay(1500)
+            .attr("x", d.x0)
+            .attr("y", d.y0)
+            .attr("width", d.x1 - d.x0)
+            .attr("height", d.y1 - d.y0)
+            .style("fill", colors)
+            .style("stroke", "none")
+            .style("opacity", "1")
+        })
+        .transition()
+        // .delay(function(d, i) {
+        //   return i * 15
+        // })
+        .duration(750)
+        .attr("width", function(d) {
+          return d.x1 - d.x0;
+        })
+        .attr("height", function(d) {
+          return d.y1 - d.y0;
+        })
+        .style("fill-opacity", 1)
+
+    }
+  </script>
+</body>

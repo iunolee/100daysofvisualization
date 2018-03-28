@@ -1,0 +1,71 @@
+<!-- Data from https://www.kaggle.com/rounakbanik/ted-talks/data -->
+
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Amiri|Heebo:100|Montserrat:100" rel="stylesheet">
+  <style>
+    body {
+      background: #141414;
+    }
+
+    svg {
+      background: #141414;
+    }
+
+    .link {
+      fill: none;
+      stroke: #D31726;
+      stroke-width: 0.15px;
+    }
+  </style>
+</head>
+
+<body>
+  <svg width="3000" height="5000"></svg>
+  <script src="//d3js.org/d3.v4.min.js"></script>
+  <script>
+    const svg = d3.select("svg");
+
+    const margin = {
+      top: 5,
+      left: 75,
+      bottom: 5,
+      right: 5
+    }
+    const width = svg.attr("width") - margin.left - margin.right;
+    const height = svg.attr("height") - margin.top - margin.bottom;
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    const g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    d3.queue()
+      // .defer(d3.csv, 'ted_main.csv')
+      .defer(d3.csv, 'winemag-data_first150k.csv')
+      .await(init);
+
+    function init(err, data) {
+      console.log(data)
+
+      const nest = d3.nest()
+        // .key(function(d) {
+          // return d.province;
+        // })
+        .key(function(d) {
+          return d.variety;
+        })
+        // .key(function(d) {
+          // return d.points;
+        // })
+        .entries(data)
+
+      console.log(nest)
+    }
+  </script>
+</body>
