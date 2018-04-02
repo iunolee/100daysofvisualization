@@ -5,9 +5,12 @@
 <head>
   <meta charset="utf-8">
   <script src="https://d3js.org/d3.v4.js"></script>
-  <link href="https://fonts.googleapis.com/css?family=Amiri|Heebo:100|Montserrat:100" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Amiri|Heebo:300,900|Montserrat:100" rel="stylesheet">
   <style>
     body {
+      width:1000px;
+      margin: auto;
+      position: relative;
       background: #141414;
     }
 
@@ -15,28 +18,38 @@
       background: #141414;
     }
 
-    .link {
+
+    text {
+      font-family: Heebo;
+      fill: #fff;
+      text-anchor: middle;
+    }
+
+    .node circle {
+      stroke: #fff;
+      stroke-width: 0.5px;
+      stroke-dasharray: 0.5,2;
       fill: none;
-      stroke: #D31726;
-      stroke-width: 0.15px;
     }
   </style>
 </head>
 
 <body>
-  <svg width="3000" height="5000"></svg>
+  <svg width="1000" height="850"></svg>
   <script src="//d3js.org/d3.v4.min.js"></script>
   <script>
     const svg = d3.select("svg");
 
     const margin = {
-      top: 5,
-      left: 75,
+      top: 25,
+      left: 5,
       bottom: 5,
       right: 5
     }
     const width = svg.attr("width") - margin.left - margin.right;
     const height = svg.attr("height") - margin.top - margin.bottom;
+
+    const format = d3.format(",d");
 
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
@@ -45,27 +58,168 @@
     const g = svg.append("g")
       .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    d3.queue()
-      // .defer(d3.csv, 'ted_main.csv')
-      .defer(d3.csv, 'winemag-data_first150k.csv')
-      .await(init);
 
-    function init(err, data) {
-      console.log(data)
+    d3.csv("ted_main.csv", function(error, data) {
 
-      const nest = d3.nest()
-        // .key(function(d) {
-          // return d.province;
-        // })
-        .key(function(d) {
-          return d.variety;
+      const allTags = [];
+      const selectedList = [];
+      const selectedTag = "success"
+      data.forEach(function(d) {
+        let letter = d.tags.replace(/[^a-zA-Z]+/g, ' ');
+        let tags = letter.split(" ");
+        for (let t in tags) {
+          if (tags[t] != "") {
+            allTags.push(tags[t])
+          }
+        }
+
+        if (tags.indexOf(selectedTag) != -1) {
+          for (let t in tags) {
+            if (tags[t] != "") {
+              selectedList.push(tags[t])
+            }
+          }
+        }
+      })
+
+      const counts = {};
+      allTags.forEach(function(x) {
+        counts[x] = (counts[x] || 0) + 1;
+      });
+
+      const finalData = [];
+      let keys = Object.keys(counts);
+      keys.forEach(function(d) {
+        finalData.push({
+          id: d,
+          value: counts[d]
         })
-        // .key(function(d) {
-          // return d.points;
-        // })
-        .entries(data)
+      })
 
-      console.log(nest)
+      console.log(finalData)
+
+      visualize(finalData);
+    });
+
+    function visualize(data) {
+
+      const pack = d3.pack()
+        .size([width, height])
+        .padding(3);
+
+      const root = d3.hierarchy({
+          children: data
+        })
+        .sum(function(d) {
+          return d.value;
+        })
+        .sort(function(a, b) {
+          return b.value - a.value;
+        });
+
+      pack(root);
+
+      const node = g.selectAll("g")
+        .data(root.children)
+        .enter().append("g")
+        .attr("transform", function(d) {
+          return "translate(" + d.x + "," + d.y + ")";
+        })
+        .attr("class", "node");
+
+      node.append("circle")
+        .attr("id", function(d) {
+          return "circle_" + d.data.id;
+        })
+        .attr("r", function(d) {
+          return d.r;
+        })
+
+      //
+      node.append("text")
+        .attr("id", function(d) {
+          return "text_" + d.data.id;
+        })
+        .text(function(d) {
+          return d.data.id;
+        })
+        .style("font-size", function(d) {
+          return (d.r) / 3.5 + "px";
+        })
+        .attr("dy", ".35em")
+        .on("mousedown", function() {
+
+          let tag = this.id.split("_")
+
+          d3.select("#text_" + tag[1])
+            .style("fill", "#fff")
+            .style("font-weight", "900")
+
+          d3.select("#circle_" + tag[1])
+            .style("fill", "#D31726")
+            .style("stroke", "#D31726")
+
+          return showRelationship(tag[1])
+        })
+        .on("mouseout", initState)
+
+      node.append("title")
+        .text(function(d) {
+          return d.data.id + "\n" + format(d.value);
+        });
+    }
+
+    function showRelationship(tag) {
+
+      d3.csv("ted_main.csv", function(error, data) {
+
+        const selectedList = [];
+        const selectedTag = tag;
+        data.forEach(function(d) {
+          let letter = d.tags.replace(/[^a-zA-Z]+/g, ' ');
+          let tags = letter.split(" ");
+
+          if (tags.indexOf(selectedTag) != -1) {
+            for (let t in tags) {
+              if (tags[t] != "") {
+                selectedList.push(tags[t])
+              }
+            }
+          }
+        })
+
+        const finalList = selectedList.filter(function(elem, pos) {
+          return selectedList.indexOf(elem) == pos;
+        });
+
+        finalList.forEach(function(d) {
+          d3.select("#circle_" + d)
+            .transition().duration(750)
+            .style("stroke", "#D31726")
+            .style("stroke-width", "2px")
+            .style("stroke-location", "inside");
+
+          if(d != tag) {
+          d3.select("#text_" + d)
+            .transition().duration(750)
+            .style("fill", "#D31726")
+          }
+        });
+
+      })
+    }
+
+    function initState() {
+      d3.selectAll("circle")
+        .transition().duration(250)
+        .style("fill", "none")
+        .style("stroke", "#fff")
+        .style("stroke-width", "0.5px");
+
+      d3.selectAll("text")
+        .transition().duration(250)
+        .style("fill", "#fff")
+        .style("font-weight", "300");
     }
   </script>
 </body>

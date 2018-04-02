@@ -1,0 +1,200 @@
+<!-- Merging mapbox into D3 : fork from http://bl.ocks.org/enjalot/0d87f32a1ccb9a720d29ba74142ba365 -->
+
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+
+<head>
+  <meta charset="utf-8">
+  <title></title>
+  <script src='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css' rel='stylesheet' />
+  <script src="//d3js.org/d3.v3.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #272727;
+    }
+
+    #menu {
+      margin-top:1.5vh;
+      left: 2.5vw;
+      font-family: futura;
+      position: absolute;
+      background: #272727;
+      color: #fff;
+      top: 5px;
+      padding: 5px;
+      font-size: 1.25em;
+      font-family: 'futura', sans-serif;
+    }
+
+    svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+
+    #weekday[type="radio"],
+    #weekend[type="radio"] {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      outline: none;
+      display: inline-block;
+      /* margin-top: 25px; */
+      width: 15px;
+      height: 15px;
+      padding: 1px;
+      /* background-color only for content */
+      background-clip: content-box;
+      border: 1px solid #bbbbbb;
+      background-color: transparent;
+      border-radius: 50%;
+    }
+    /* appearance for checked radiobutton */
+
+    #weekday[type="radio"]:checked {
+      background-color: #9cf0ea;
+    }
+
+    #weekend[type="radio"]:checked {
+      background-color: #d5647e;
+    }
+  </style>
+</head>
+
+<body>
+  <div id='map' style='width: 100vw; height: 90vh; margin-top:10vh'></div>
+<div>
+  <div id='menu'>
+    <input id='weekday' type='radio' name='rtoggle' value='basic'>
+    <label style="color:#9cf0ea" for='weekday'>Weekday</label>
+    <input id='weekend' type='radio' name='rtoggle' value='streets'>
+    <label style="color:#d5647e" for='weekend'>Weekend</label>
+  </div>
+  <script>
+    // Mapbox setting
+    mapboxgl.accessToken = 'pk.eyJ1IjoiaXVub2xlZSIsImEiOiJjajE1cGVuMWUwMTlqMnFvZDIwZjhoZ2xkIn0.c1QyfR5Y2WD9Vzflg4fcYA';
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v9',
+      zoom: 10,
+      center: [-73.974808, 40.779425]
+    });
+
+    // D3 setting
+    var container = map.getCanvasContainer();
+    var svg = d3.select(container).append("svg");
+    // Get ready for data
+    // var dayList = [];
+    // var nightList = [];
+    var weekdayList = [];
+    var weekendList = [];
+    d3.csv("openpath.csv", function(data) {
+      // console.log(data);
+      data.forEach(function(d) {
+        // console.log(d.date)
+        var date = new Date(d.date);
+        var hour = date.getHours()
+        var day = date.getDay();
+        // if (hour >= 5 && hour <= 19) {
+        // dayList.push(d);
+        // } else {
+        // nightList.push(d);
+        // }
+
+        if (day == 0 || day == 6) {
+          weekendList.push(d);
+        } else {
+          weekdayList.push(d);
+        }
+      })
+      // console.log(dayList)
+      // console.log(nightList)
+      console.log(weekendList)
+      console.log(weekdayList)
+
+      visualize();
+    })
+
+    function visualize() {
+      var dotsWeekday = svg.selectAll("day")
+        .data(weekdayList)
+
+      dotsWeekday.enter().append("circle").attr("class", "day")
+        .attr("r", 0.75)
+        .style("fill", "#9cf0ea")
+        .style("fill-opacity", 0.75)
+      // .transition().delay(1000).duration(2000)
+      // .attr("r", 2.5)
+
+      var dotsWeekend = svg.selectAll("night")
+        .data(weekendList)
+
+      dotsWeekend.enter().append("circle").attr("class", "night")
+        .attr("r", 0.75)
+        .style("fill", "#d5647e")
+        .style("fill-opacity", 0.75)
+      // .transition().delay(1000).duration(2000)
+      // .attr("r", 2.5)
+
+      document.getElementById("weekday").onclick = function() {
+        dotsWeekday.transition().delay(500).duration(2000).attr("r", 5).style("fill-opacity", 0.4)
+        dotsWeekend.transition().duration(2000).attr("r", 0.5).style("fill-opacity", 0.75)
+      }
+
+      // If 'night' is checked
+      document.getElementById("weekend").onclick = function() {
+        dotsWeekend.transition().delay(500).duration(2000).attr("r", 5).style("fill-opacity", 0.4)
+        dotsWeekday.transition().duration(2000).attr("r", 0.5).style("fill-opacity", 0.75)
+      }
+
+      function render() {
+        dotsWeekend
+          .attr({
+            cx: function(d) {
+              var x = project(d).x;
+              return x
+            },
+            cy: function(d) {
+              var y = project(d).y;
+              return y
+            },
+          })
+
+        dotsWeekday
+          .attr({
+            cx: function(d) {
+              var x = project(d).x;
+              return x
+            },
+            cy: function(d) {
+              var y = project(d).y;
+              return y
+            },
+          })
+      }
+
+      function project(d) {
+        return map.project(getLL(d));
+      }
+
+      function getLL(d) {
+        return new mapboxgl.LngLat(+d.lon, +d.lat)
+      }
+
+      map.on("viewreset", function() {
+        render()
+      });
+
+      map.on("move", function() {
+        render()
+      });
+      // render our initial visualization
+      render()
+    }
+  </script>
+</body>
+
+</html>
