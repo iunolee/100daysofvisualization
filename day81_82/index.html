@@ -37,6 +37,8 @@
   <script src="//d3js.org/d3.v4.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   <script>
+
+
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -98,42 +100,51 @@
 
     function getCurrentLocation() {
 
-      $.post("https://www.googleapis.com/geolocation/v1/geolocate?key=AIzaSyANNXCX3qWs_hIaP8OU-JIpXYPBHYUQYzE", function(position) {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
 
-        let location = position.location.lat + "," + position.location.lng;
+          let lat = position.coords.latitude;
+          let lon = position.coords.longitude;
+          let location = lat + "," + lon;
 
-        alert("You are at " + location);
+          alert("You are at " + location);
 
-        d3.json("https://api.foursquare.com/v2/venues/search?ll=" + location + "&radius=200&limit=50&client_id=Y0F0SGRIHVPRS0HU2C1MEYMS2U215OPQTAAXPLVNDAR4XGVH&client_secret=XBKYZGHJT5IM0FXH4OMWVMSOZY2WC2JAGZTG1UIN2XI3ZSTX&v=20180405&locale=en",
-          function(data) {
-            let venues = data.response.venues
-            venues.forEach(function(d) {
-              if (d.categories.length >= 1) {
-                let category = d.categories[0].name;
-                categoryList.push({venue:d.name, category: category});
-              }
-            })
-
-            // console.log(differenceOf2Arrays(categoryList, allList));
-
-            // Get color from lists
-            const mapped = d3.map(allListWithColor, function(d) {
-              return d.category;
-            });
-
-            categoryList.forEach(function(d) {
-              let matched = mapped.get(d.category);
-              finalData.push({
-                venue:d.venue,
-                category: d.category,
-                color: matched.color,
-                x: Math.random() * width,
-                y: Math.random() * height
+          d3.json("https://api.foursquare.com/v2/venues/search?ll=" + location +
+            "&radius=200&limit=50&client_id=Y0F0SGRIHVPRS0HU2C1MEYMS2U215OPQTAAXPLVNDAR4XGVH&client_secret=XBKYZGHJT5IM0FXH4OMWVMSOZY2WC2JAGZTG1UIN2XI3ZSTX&v=20180405&locale=en",
+            function(data) {
+              let venues = data.response.venues
+              venues.forEach(function(d) {
+                if (d.categories.length >= 1) {
+                  console.log(d)
+                  let category = d.categories[0].name;
+                  categoryList.push({
+                    venue: d.name,
+                    category: category
+                  });
+                }
               })
+
+              // console.log(differenceOf2Arrays(categoryList, allList));
+
+              // Get color from lists
+              const mapped = d3.map(allListWithColor, function(d) {
+                return d.category;
+              });
+
+              categoryList.forEach(function(d) {
+                let matched = mapped.get(d.category);
+                finalData.push({
+                  venue: d.venue,
+                  category: d.category,
+                  color: matched.color,
+                  x: Math.random() * width,
+                  y: Math.random() * height
+                })
+              })
+              visualize(finalData);
             })
-            visualize(finalData);
-          })
-      });
+        });
+      }
     }
 
     // Visualize it into voronoi polygons
@@ -169,15 +180,15 @@
           console.log(d);
           tooltip.transition().duration(750)
             .style("opacity", 1)
-            // .delay(1500).duration(500)
-            // .style("opacity", 0)
+          // .delay(1500).duration(500)
+          // .style("opacity", 0)
 
-          tooltip.html("<p>" +d.data.venue+ " / " + d.data.category + "</p>")
-            .style("left", (d3.event.pageX-50) + "px")
-            .style("top", (d3.event.pageY-30) + "px")
+          tooltip.html("<p>" + d.data.venue + " / " + d.data.category + "</p>")
+            .style("left", (d3.event.pageX - 50) + "px")
+            .style("top", (d3.event.pageY - 30) + "px")
 
-            tooltip.transition().delay(1500).duration(750)
-              .style("opacity", 0)
+          tooltip.transition().delay(1500).duration(750)
+            .style("opacity", 0)
         })
         .transition().delay(function(d, i) {
           return i * 25

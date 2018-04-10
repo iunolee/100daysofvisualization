@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <script src="https://d3js.org/d3.v4.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <link href="https://fonts.googleapis.com/css?family=Amiri|Heebo:300,900|Montserrat:100" rel="stylesheet">
+  <script src='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v0.44.1/mapbox-gl.css' rel='stylesheet' />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+    }
+
+    .tooltip {
+      text-align: center;
+      position: absolute;
+      font-size: 1.25em;
+      pointer-events: none;
+      border: none;
+      border-radius: 0px;
+      font-family: futura;
+      color: #fff;
+      background: none;
+    }
+
+    .tooltip p {
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id='map' style='width: 100vw; height: 100vh;'></div>
+  <script>
+    var map, container, svgInMap;
+
+    const width = document.getElementById("map").offsetWidth;
+    const height = document.getElementById("map").offsetHeight;
+    console.log(width, height);
+
+    // const svg = d3.select("body")
+    //   .append("svg")
+    //   .attr("width", width)
+    //   .attr("height", height)
+
+    const tooltip = d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("opacity", 0);
+
+    const allList = [];
+    const categoryList = [];
+    const allListWithColor = [];
+
+    // Get Foursquare's category list and assign color
+    d3.json("https://api.foursquare.com/v2/venues/categories?&client_id=Y0F0SGRIHVPRS0HU2C1MEYMS2U215OPQTAAXPLVNDAR4XGVH&client_secret=XBKYZGHJT5IM0FXH4OMWVMSOZY2WC2JAGZTG1UIN2XI3ZSTX&v=20180405&locale=en", function(data) {
+
+      // console.log(data);
+      let first = data.response.categories;
+      for (var i in first) {
+        allList.push(first[i].name);
+        let second = first[i].categories;
+        for (var j in second) {
+          allList.push(second[j].name);
+          if (second[j].categories.length >= 1) {
+            let third = second[j].categories;
+            for (var k in third) {
+              allList.push(third[k].name);
+              if (third[k].categories.length >= 1) {
+                let fourth = third[k].categories;
+                for (var l in fourth) {
+                  allList.push(fourth[l].name);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const colorScale = d3.scaleSequential(d3.interpolateRainbow)
+        .domain([0, allList.length - 1])
+
+      allList.forEach(function(d, i) {
+        allListWithColor.push({
+          category: d,
+          color: colorScale(i)
+        })
+      })
+
+      console.log(allListWithColor)
+      getCurrentLocation()
+    })
+    //
+    // // Get current location coordinate and arrange the final dataset
+    const finalData = [];
+
+    function getCurrentLocation() {
+
+      if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(function(position) {
+
+      let lat = position.coords.latitude;
+      let lon = position.coords.longitude;
+
+      // let lon = -73.996369;
+      // let lat = 40.730684;
+      let location = lat + "," + lon;
+
+      // Mapbox setting
+      mapboxgl.accessToken = 'pk.eyJ1IjoiaXVub2xlZSIsImEiOiJjajE1cGVuMWUwMTlqMnFvZDIwZjhoZ2xkIn0.c1QyfR5Y2WD9Vzflg4fcYA';
+      map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/dark-v9',
+        zoom: 17,
+        center: [+lon, +lat]
+      });
+
+      // D3 setting
+      container = map.getCanvasContainer();
+      svgInMap = d3.select(container).append("svg");
+
+      alert("You are at " + location);
+      d3.json("https://api.foursquare.com/v2/venues/search?ll=" + location +
+        "&limit=50&client_id=Y0F0SGRIHVPRS0HU2C1MEYMS2U215OPQTAAXPLVNDAR4XGVH&client_secret=XBKYZGHJT5IM0FXH4OMWVMSOZY2WC2JAGZTG1UIN2XI3ZSTX&v=20180405&locale=en",
+        function(data) {
+          let venues = data.response.venues
+          venues.forEach(function(d) {
+            if (d.categories.length >= 1) {
+              let category = d.categories[0].name;
+              categoryList.push({
+                venue: d.name,
+                category: category,
+                lat: d.location.lat,
+                lon: d.location.lng
+              });
+            }
+          })
+
+          // console.log(differenceOf2Arrays(categoryList, allList));
+
+          // Get color from lists
+          const mapped = d3.map(allListWithColor, function(d) {
+            return d.category;
+          });
+
+          categoryList.forEach(function(d) {
+            let matched = mapped.get(d.category);
+            finalData.push({
+              venue: d.venue,
+              category: d.category,
+              color: matched.color,
+              lat: d.lat,
+              lon: d.lon
+            })
+          })
+          visualize(finalData);
+        })
+      });
+      }
+    }
+
+    function visualize(data) {
+
+      console.log(data);
+
+      const venues = svgInMap.selectAll("circle")
+        .data(data)
+        .enter().append("circle")
+        .attr("class", "venueCircle")
+        .attr("r", 5)
+        .style("fill", function(d) {
+          return d.color;
+        })
+        .style("fill-opacity", 1)
+
+      // render our initial visualization
+      render()
+
+      map.on("viewreset", function() {
+        render()
+      });
+
+      map.on("move", function() {
+        render()
+      });
+
+      function render() {
+        venues
+          .attr("cx", function(d) {
+            var x = project(d).x;
+            return x;
+          })
+          .attr("cy", function(d) {
+            var y = project(d).y;
+            return y;
+          })
+      }
+
+      const dataWithinMap = [];
+      data.forEach(function(d) {
+        if(project(d).x > 0 && project(d).x < width && project(d).y > 0 && project(d).y < height) {
+          dataWithinMap.push(d)
+        }
+      })
+
+      setTimeout(function() {
+        visualizeVoronoi(dataWithinMap)
+      }, 4000);
+    }
+
+    // Visualize it into voronoi polygons
+    function visualizeVoronoi(data) {
+
+      console.log(data);
+
+      const voronoi = d3.voronoi()
+        .extent([
+          [-10, -10],
+          [width + 10, height + 10]
+        ])
+        .x(function(d) {
+          var x = project(d).x;
+          return x;
+        })
+        .y(function(d) {
+          var y = project(d).y;
+          return y;
+        })
+
+      const voronoiShape = svgInMap.selectAll(".voronoi")
+        .data(voronoi(data).polygons(), function(d) {
+          console.log(d);
+          return d.data.category
+        });
+
+      voronoiShape.exit()
+        .remove();
+
+      voronoiShape.enter().append("path")
+        .attr("class", "voronoi")
+        .style("fill-opacity", 0)
+        .style("fill", function(d) {
+          return d.data.color
+        })
+        .on("mousedown", function(d) {
+          console.log(d);
+          tooltip.transition().duration(750)
+            .style("opacity", 1)
+          // .delay(1500).duration(500)
+          // .style("opacity", 0)
+
+          tooltip.html("<p>" + d.data.venue + " / " + d.data.category + "</p>")
+            .style("left", (d3.event.pageX - 50) + "px")
+            .style("top", (d3.event.pageY - 30) + "px")
+
+          tooltip.transition().delay(1500).duration(750)
+            .style("opacity", 0)
+        })
+        .transition().delay(function(d, i) {
+          return i * 25
+        }).duration(1000)
+        .style("fill-opacity", 1)
+        .attr("d", function(d) {
+          return "M" + d.join("L") + "Z";
+        })
+
+        d3.selectAll(".venueCircle").remove();
+    }
+
+    function project(d) {
+      return map.project(getLL(d));
+    }
+
+    function getLL(d) {
+      return new mapboxgl.LngLat(+d.lon, +d.lat)
+    }
+
+    // function differenceOf2Arrays(array1, array2) {
+    //   var temp = [];
+    //   // array1 = array1.toString().split(',').map(String);
+    //   // array2 = array2.toString().split(',').map(String);
+    //
+    //   for (var i in array1) {
+    //     if (array2.indexOf(array1[i]) === -1) temp.push(array1[i]);
+    //   }
+    //   // for (i in array2) {
+    //   // if (array1.indexOf(array2[i]) === -1) temp.push(array2[i]);
+    //   // }
+    //   return temp.sort((a, b) => a - b);
+    // }
+  </script>
+</body>
